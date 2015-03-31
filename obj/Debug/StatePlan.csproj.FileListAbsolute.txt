@@ -1,6 +1,0 @@
-P:\workdata\Personal\StatePlan\bin\StatePlan.dll.config
-P:\workdata\Personal\StatePlan\bin\StatePlan.dll
-P:\workdata\Personal\StatePlan\bin\StatePlan.pdb
-P:\workdata\Personal\StatePlan\obj\Debug\StatePlan.dll
-P:\workdata\Personal\StatePlan\obj\Debug\StatePlan.pdb
-P:\workdata\Personal\StatePlan\obj\Debug\StatePlan.csprojResolveAssemblyReference.cache

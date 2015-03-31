@@ -1,0 +1,5 @@
+P:\workdata\Personal\StatePlaner\bin\StatePlaner.dll.config
+P:\workdata\Personal\StatePlaner\bin\StatePlaner.dll
+P:\workdata\Personal\StatePlaner\bin\StatePlaner.pdb
+P:\workdata\Personal\StatePlaner\obj\Debug\StatePlaner.dll
+P:\workdata\Personal\StatePlaner\obj\Debug\StatePlaner.pdb

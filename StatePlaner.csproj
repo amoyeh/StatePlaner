@@ -18,9 +18,11 @@
     <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="example\Event.html" />
+    <Content Include="example\BasicTest.html" />
+    <Content Include="example\StateLayout.html" />
     <Content Include="example\stateplaner.min.js" />
     <Content Include="example\TrafficBasic.html" />
+    <Content Include="src\stateplaner.css" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>

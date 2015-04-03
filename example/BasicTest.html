@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplaner.js"></script>
+    <link rel="stylesheet" href="../src/stateplaner.css" />
+
+    <style type="text/css">
+        body {
+            font: normal 15px arial;
+        }
+
+        h4 {
+            margin: 10px 0px;
+            padding: 0px;
+        }
+
+        #debugDiv1 {
+            padding: 10px;
+            border-radius: 5px;
+            background: #F0F0F0;
+        }
+
+        input[type=button] {
+            padding: 10px;
+        }
+
+        #output {
+            width: 100%;
+            border: none;
+            background: #EEEEEE;
+            border-radius: 5px;
+            height: 200px;
+        }
+
+        #trafficLightPane {
+            border-radius: 5px;
+            margin: 20px 0px;
+            background: #EEE;
+            padding: 20px;
+        }
+
+            #trafficLightPane:after {
+                display: block;
+                content: "";
+                clear: both;
+            }
+
+        .lightCircle {
+            width: 40px;
+            height: 40px;
+            border-radius: 20px;
+            float: left;
+            margin-right: 30px;
+        }
+
+
+
+        #redDiv {
+            background: #3D0000;
+        }
+
+        #yellowDiv {
+            background: #332900;
+        }
+
+        #greenDiv {
+            background: #001F00;
+        }
+
+
+    </style>
+
+
+
+    <script type="text/javascript">
+
+        function EventTest() {
+
+            //create traffic simulation
+            var fsm = new sp.FSM("TrafficApp");
+
+            //red, green , yellow light state
+            var red = new sp.State("red");
+            var green = new sp.State("green");
+            var yellow = new sp.State("yellow");
+
+            //add transitions
+            red.addTransition(green);
+            green.addTransition(yellow);
+            yellow.addTransition(red);
+
+            //add state enter , exit function
+            red.enter = function (target, fsm, from) {
+                $("#redDiv").css("background-color", "#CC0000");
+                log("enter red state from " + from);
+                $("#nextBtn").off("click");
+                $("#nextBtn").prop("value", "next to green");
+                $("#nextBtn").on("click", function () {
+                    fsm.toState("green");
+                });
+            }
+            red.exit = function (target, fsm, next) {
+                log("exit red state next " + next);
+                $("#redDiv").css("background-color", "#3D0000");
+            }
+
+            green.enter = function (target, fsm, from) {
+                $("#greenDiv").css("background-color", "#00CC00");
+                log("enter green state from " + from);
+                $("#nextBtn").off("click");
+                $("#nextBtn").prop("value", "next to yellow");
+                $("#nextBtn").on("click", function () {
+                    fsm.toState("yellow");
+                });
+            }
+            green.exit = function (target, fsm, next) {
+                log("exit green state next " + next);
+                $("#greenDiv").css("background-color", "#001F00");
+            }
+            yellow.enter = function (target, fsm, from) {
+                $("#yellowDiv").css("background-color", "#FFCC00");
+                log("enter yellow state from " + from);
+                $("#nextBtn").off("click");
+                $("#nextBtn").prop("value", "next red");
+                $("#nextBtn").on("click", function () {
+                    fsm.toState("red");
+                });
+            }
+            yellow.exit = function (target, fsm, next) {
+                log("exit yellow state next " + next);
+                $("#yellowDiv").css("background-color", "#332900");
+            }
+
+
+            fsm.addChild(red, green, yellow);
+            fsm.buildTree();
+            fsm.setLayoutMap("stateMap");
+
+            fsm.toState("red");
+
+            $("#clearOutPutBtn").on("click", function () {
+                msgs = [];
+                $("#output").val("");
+            });
+
+
+        }
+
+        //print log message
+        var msgs = [];
+        function log(newMsg) {
+            msgs.push(newMsg);
+            $("#output").val(msgs.join("\n"));
+            while (msgs.length > 20) msgs.shift();
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+
+
+    </script>
+</head>
+
+<body onload="EventTest()">
+    <div id="trafficLightPane">
+        <div class="lightCircle" id="redDiv"></div>
+        <div class="lightCircle" id="yellowDiv"></div>
+        <div class="lightCircle" id="greenDiv"></div>
+        <input type="button" id="nextBtn" value="nextBtn" />
+    </div>
+    <h4>output</h4>
+    <textarea id="output"></textarea>
+    <input type="button" style="margin-top:10px;" id="clearOutPutBtn" value="clearOutPut" />
+
+    <!--display state as map-->
+    <div class="statePlaner" style="margin-top:20px;" id="stateMap"></div>
+</body>
+</html>

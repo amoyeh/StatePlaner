@@ -103,12 +103,25 @@ var sp;
         };
         State.prototype.addTransition = function (other, bothWay) {
             if (bothWay === void 0) { bothWay = false; }
-            if (this.transitions.indexOf(other.name) == -1 && this.name != other.name) {
-                this.transitions.push(other.name);
+            if (other.constructor === Array) {
+                var list = other;
+                for (var k = 0; k < list.length; k++) {
+                    this.addOneTransition(list[k], bothWay);
+                }
             }
-            if (bothWay) {
-                if (other.transitions.indexOf(this.name) == -1 && other.name != this.name) {
-                    other.transitions.push(this.name);
+            if (other.constructor === State) {
+                this.addOneTransition(other, bothWay);
+            }
+        };
+        State.prototype.addOneTransition = function (other, bothWay) {
+            if (other.name) {
+                if (this.transitions.indexOf(other.name) == -1 && this.name != other.name) {
+                    this.transitions.push(other.name);
+                }
+                if (bothWay) {
+                    if (other.transitions.indexOf(this.name) == -1 && other.name != this.name) {
+                        other.transitions.push(this.name);
+                    }
                 }
             }
         };
@@ -266,6 +279,8 @@ var sp;
                         toStateObj.parent.exit(toStateObj.parent, this, "");
                     }
                 }
+                if (this.divObj)
+                    this.showLayoutStateActive(this.getCurrentState().name);
                 return true;
             }
             else {
@@ -274,63 +289,168 @@ var sp;
                 return false;
             }
         };
-        FSM.prototype.setDebugUI = function (target) {
-            target.empty();
-            var headDiv = $("<div></div>");
-            headDiv.css({ "color": "#333333", "cursor": "pointer" });
-            headDiv.text(this.name);
-            target.append(headDiv);
-            var topUL = target.append('<ul></ul>').find('ul');
-            function recursiveAdd(target, parent, parentObj) {
-                var newObj;
-                var addVal = "";
-                if (target.isInitial)
-                    addVal = " (init)";
-                if (target.isFinal)
-                    addVal = " (final)";
-                var newLi = $('<li data-trans="' + target.transitions.join(",") + '">' + target.name + addVal + '</li>');
-                $(newLi).css({ "font-weight": "normal", "color": "#333", "text-decoration": "none" });
-                parentObj.append(newLi);
-                if (target.hasChild()) {
-                    newObj = $("<ul></ul>");
-                    parentObj.append(newObj);
-                    for (var tk in target.childs) {
-                        recursiveAdd(target.childs[tk], target, newObj);
-                    }
-                }
-            }
+        FSM.prototype.setLayoutMap = function (divId) {
+            var self = this;
+            var useDiv = $("#" + divId);
+            useDiv.empty();
+            this.divObj = useDiv;
+            var titleDiv = $("<div class='spTitle'></div>");
+            useDiv.append(titleDiv);
+            this.currentStateTxt = $("<input type='text' class='spStateTxt'/>");
+            titleDiv.append(this.currentStateTxt);
+            this.topUL = useDiv.append('<ul></ul>').find('ul');
+            this.topUL.addClass("spul");
+            var expendBtns = [];
             for (var ck in this.childs) {
                 var loopOne = this.childs[ck];
-                recursiveAdd(loopOne, this, topUL);
+                recursiveAdd(loopOne, this, 1, this.topUL);
             }
-            var outDiv = $("<div></div>");
-            target.append(outDiv);
-            topUL.find("li").each(function () {
-                $(this).css({ "cursor": "pointer" });
-                $(this).on("click", function (e) {
-                    var transVal = $(e.currentTarget).attr("data-trans").split(",");
-                    topUL.find("li").each(function () {
-                        var checkText = $(this).text();
-                        checkText = checkText.replace(" (init)", "");
-                        checkText = checkText.replace(" (final)", "");
-                        if (transVal.indexOf(checkText) > -1) {
-                            $(this).css({ "font-weight": "bold", "color": "#FF6666", "text-decoration": "none", "font-size": "100%" });
+            function setULClose(subUL) {
+                subUL.find(".spExpend").text("+");
+                subUL.children("li").each(function (index, element) {
+                    if (index > 0) {
+                        $(this).hide();
+                    }
+                    subUL.css({ "border": "1px solid rgba(0,0,0,0)" });
+                });
+                subUL.children("ul").each(function (index, element) {
+                    $(this).hide();
+                });
+            }
+            function loopCheckOpen(subUL, level) {
+                subUL.show();
+                setULClose(subUL);
+                if (!subUL.data("wasClose")) {
+                    subUL.find(".spExpend").text("-");
+                    subUL.children("li").each(function (index, element) {
+                        $(this).show();
+                        subUL.css({ "border": "1px solid #EEE" });
+                    });
+                    subUL.children("ul").each(function (index, element) {
+                        level++;
+                        loopCheckOpen($(this), level);
+                    });
+                }
+            }
+            function setULOpen(subUL) {
+                subUL.show();
+                subUL.find(".spExpend").text("-");
+                subUL.children("li").each(function (index, element) {
+                    if (index > 0)
+                        $(this).show();
+                    subUL.css({ "border": "1px solid #EEE" });
+                });
+                subUL.children("ul").each(function (index, element) {
+                    loopCheckOpen($(this), 1);
+                });
+            }
+            function recursiveAdd(cState, parent, level, parentObj) {
+                var newUL;
+                var addVal = "";
+                if (cState.isInitial)
+                    addVal = " (init)";
+                if (cState.isFinal)
+                    addVal = " (final)";
+                if (cState.hasChild()) {
+                    var loopUL = $("<ul data-name='" + cState.name + "'></ul>");
+                    parentObj.append(loopUL);
+                    parentObj.append(newUL);
+                    loopUL.data("wasClose", false);
+                    var firstLi = $('<li data-name="' + cState.name + '" data-trans="' + cState.transitions.join(",") + '"></li > ');
+                    loopUL.append(firstLi);
+                    var nameSpan = $('<span data-name="' + cState.name + '" data-trans="' + cState.transitions.join(",") + '">' + cState.name + addVal + '</span>');
+                    nameSpan.on("click", function (e) {
+                        self.showLayoutStateActive($(this).attr("data-name"));
+                    });
+                    firstLi.append(nameSpan);
+                    var expandDiv = $("<span class='spExpend'>-</span>");
+                    expandDiv.data("ul", loopUL);
+                    firstLi.append(expandDiv);
+                    expendBtns.push(expandDiv);
+                    expandDiv.on("click", function () {
+                        var targetUL = $(this).data("ul");
+                        if ($(this).text().indexOf("-") > -1) {
+                            setULClose(targetUL);
+                            targetUL.data("wasClose", true);
                         }
                         else {
-                            $(this).css({ "font-weight": "normal", "color": "#333", "text-decoration": "none", "font-size": "100%" });
+                            setULOpen(targetUL);
+                            targetUL.data("wasClose", false);
                         }
                     });
-                    $(this).css({ "color": "#CC3300", "font-weight": "bold", "text-decoration": "underline", "font-size": "120%" });
-                    var tranStr = $(e.currentTarget).attr("data-trans");
-                    tranStr = tranStr.replace(/,/g, " , ");
-                    outDiv.html("state: " + $(this).text() + "  <span style='padding-left:30px; '>  transitions: " + tranStr + "</span>");
-                });
+                    for (var tk in cState.childs) {
+                        recursiveAdd(cState.childs[tk], cState, level, loopUL);
+                    }
+                }
+                else {
+                    var newLi = $('<li data-name="' + cState.name + '" data-trans="' + cState.transitions.join(",") + '">' + cState.name + addVal + '</li>');
+                    parentObj.append(newLi);
+                    newLi.on("click", function (e) {
+                        self.showLayoutStateActive($(this).attr("data-name"));
+                    });
+                }
+            }
+            var showUIBtn = $("<span class='spTopBtn' style='width:60px; display:none;'>show UI</span>");
+            useDiv.append(showUIBtn);
+            var hideUIBtn = $("<span class='spTopBtn' style='width:60px;'>hide UI</span>");
+            var openAllTbtn = $("<span class='spTopBtn'>open all</span>");
+            var closeAllTbtn = $("<span class='spTopBtn'>close all</span>");
+            titleDiv.prepend(closeAllTbtn);
+            titleDiv.prepend(openAllTbtn);
+            titleDiv.prepend(hideUIBtn);
+            closeAllTbtn.on("click", function () {
+                for (var k = 0; k < expendBtns.length; k++) {
+                    var ebtn = expendBtns[k];
+                    var targetUL = ebtn.data("ul");
+                    setULClose(targetUL);
+                    targetUL.data("wasClose", true);
+                }
             });
-            headDiv.on("click", function (e) {
-                topUL.find("li").each(function () {
-                    $(this).css({ "font-weight": "normal", "color": "#333", "text-decoration": "none", "font-size": "100%" });
-                    outDiv.html("");
-                });
+            openAllTbtn.on("click", function () {
+                for (var k = 0; k < expendBtns.length; k++) {
+                    var ebtn = expendBtns[k];
+                    var targetUL = ebtn.data("ul");
+                    targetUL.data("wasClose", false);
+                    targetUL.show();
+                    ebtn.text("-");
+                    targetUL.children("li").each(function (index, element) {
+                        if (index > 0)
+                            $(this).show();
+                        targetUL.css({ "border": "1px solid #EEE" });
+                    });
+                }
+            });
+            hideUIBtn.on("click", function () {
+                titleDiv.hide();
+                self.topUL.hide();
+                showUIBtn.show();
+            });
+            showUIBtn.on("click", function () {
+                titleDiv.show();
+                self.topUL.show();
+                showUIBtn.hide();
+            });
+        };
+        FSM.prototype.showLayoutStateActive = function (name) {
+            console.log("showLayoutStateActive " + name);
+            var self = this;
+            this.topUL.find("li").each(function (index, element) {
+                $(this).css({ "font-weight": "normal", "color": "#333333", "border-color": "#EEE", "opacity": "0.5" });
+                $(this).css({ "font-weight": "normal", "color": "#333333", "border-color": "#EEE" });
+            });
+            this.topUL.find("li").each(function (index, element) {
+                if ($(this).attr("data-name") == name) {
+                    $(this).css({ "color": "#FF0000", "font-weight": "bold", "border-color": "#FF0000", "opacity": "1" });
+                    self.currentStateTxt.val($(this).attr("data-name") + " │ transitions: " + $(this).attr("data-trans").replace(/,/g, " , "));
+                    var transList = $(this).attr("data-trans").split(",");
+                    self.topUL.find("li").each(function (index, element) {
+                        if (transList.indexOf($(this).attr("data-name")) > -1) {
+                            console.log("set ON : " + $(this).attr("data-name"));
+                            console.log($(this).get(0));
+                            $(this).css({ "color": "#FF6666", "border-color": "#FF6666", "opacity": "1" });
+                        }
+                    });
+                }
             });
         };
         return FSM;

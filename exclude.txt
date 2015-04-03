@@ -1,0 +1,17 @@
+\bin\
+\obj\
+.map
+.ts.map
+.ts
+.psd
+.ai
+.sln
+.cmd
+.csproj
+.user
+.config
+.pptx
+.ppt
+.dll
+.pdb
+exclude.txt

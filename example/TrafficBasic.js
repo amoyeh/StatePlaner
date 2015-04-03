@@ -89,7 +89,6 @@ function TrafficBasic() {
     });
     fsm.addChild(red, green, yellow);
     fsm.buildTree();
-    fsm.setDebugUI($("#debugDiv1"));
     $("#clearOutPutBtn").on("click", function () {
         msgs = [];
         $("#output").val("");

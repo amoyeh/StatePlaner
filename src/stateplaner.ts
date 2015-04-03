@@ -114,13 +114,27 @@ module sp {
             }
         }
 
-        public addTransition(other: State, bothWay: boolean = false): void {
-            if (this.transitions.indexOf(other.name) == -1 && this.name != other.name) {
-                this.transitions.push(other.name);
+        public addTransition(other: any, bothWay: boolean = false): void {
+            if (other.constructor === Array) {
+                var list: State[] = other;
+                for (var k: number = 0; k < list.length; k++) {
+                    this.addOneTransition(list[k], bothWay);
+                }
             }
-            if (bothWay) {
-                if (other.transitions.indexOf(this.name) == -1 && other.name != this.name) {
-                    other.transitions.push(this.name);
+            if (other.constructor === State) {
+                this.addOneTransition(other, bothWay);
+            }
+        }
+
+        private addOneTransition(other: State, bothWay: boolean): void {
+            if (other.name) {
+                if (this.transitions.indexOf(other.name) == -1 && this.name != other.name) {
+                    this.transitions.push(other.name);
+                }
+                if (bothWay) {
+                    if (other.transitions.indexOf(this.name) == -1 && other.name != this.name) {
+                        other.transitions.push(this.name);
+                    }
                 }
             }
         }
@@ -167,6 +181,9 @@ module sp {
         //build the state tree and find all states and reference it
         public allStates: { [name: string]: State };
         public history: string[];
+        private divObj: JQuery;
+        private topUL: JQuery;
+        private currentStateTxt: JQuery;
 
         constructor(name: string) {
             super(name);
@@ -325,6 +342,8 @@ module sp {
                     }
                 }
 
+                if (this.divObj) this.showLayoutStateActive(this.getCurrentState().name);
+
                 return true;
 
             } else {
@@ -334,77 +353,207 @@ module sp {
             }
         }
 
-        public setDebugUI(target: JQuery): void {
+        public setLayoutMap(divId: string): void {
 
-            target.empty();
+            var self: FSM = this;
+            var useDiv: JQuery = $("#" + divId);
+            useDiv.empty();
 
-            var headDiv = $("<div></div>");
-            headDiv.css({ "color": "#333333", "cursor": "pointer" });
-            headDiv.text(this.name);
-            target.append(headDiv);
+            this.divObj = useDiv;
 
-            var topUL: JQuery = target.append('<ul></ul>').find('ul');
+            //the name of the FMS
 
-            //local recursive adding structure
-            function recursiveAdd(target: State, parent: State, parentObj: JQuery) {
-                var newObj: JQuery;
-                var addVal: string = "";
-                if (target.isInitial) addVal = " (init)";
-                if (target.isFinal) addVal = " (final)";
-                var newLi = $('<li data-trans="' + target.transitions.join(",") + '">' + target.name + addVal + '</li>');
-                $(newLi).css({ "font-weight": "normal", "color": "#333", "text-decoration": "none" });
-                parentObj.append(newLi);
-                if (target.hasChild()) {
-                    newObj = $("<ul></ul>");
-                    parentObj.append(newObj);
-                    for (var tk in target.childs) {
-                        recursiveAdd(target.childs[tk], target, newObj);
-                    }
-                }
-            }
+            var titleDiv = $("<div class='spTitle'></div>");
+            useDiv.append(titleDiv);
+            this.currentStateTxt = $("<input type='text' class='spStateTxt'/>");
+            titleDiv.append(this.currentStateTxt);
+
+            //root state list
+            this.topUL = useDiv.append('<ul></ul>').find('ul');
+            this.topUL.addClass("spul");
+
+            var expendBtns = [];
 
             for (var ck in this.childs) {
                 var loopOne: State = this.childs[ck];
-                recursiveAdd(loopOne, this, topUL);
+                recursiveAdd(loopOne, this, 1, this.topUL);
             }
 
-            var outDiv: JQuery = $("<div></div>");
-            target.append(outDiv);
+            function setULClose(subUL: JQuery) {
+                subUL.find(".spExpend").text("+");
+                subUL.children("li").each(function (index, element) {
+                    if (index > 0) {
+                        $(this).hide();
+                    }
+                    //margin-bottom: -4px;
+                    subUL.css({ "border": "1px solid rgba(0,0,0,0)" });
+                });
+                subUL.children("ul").each(function (index, element) { $(this).hide(); });
+            }
 
-            topUL.find("li").each(function () {
+            function loopCheckOpen(subUL: JQuery, level: number) {
+                //console.log("loopCheckOpen:  " + subUL.attr("data-name") + " , level: " + level + "  was close: " + subUL.data("wasClose"));
+                subUL.show();
+                setULClose(subUL);
+                if (!subUL.data("wasClose")) {
+                    subUL.find(".spExpend").text("-");
+                    subUL.children("li").each(function (index, element) {
+                        $(this).show();
+                        subUL.css({ "border": "1px solid #EEE" });
 
-                $(this).css({ "cursor": "pointer" });
+                    });
+                    subUL.children("ul").each(function (index, element) {
+                        level++;
+                        loopCheckOpen($(this), level);
+                    });
+                }
+            }
 
-                $(this).on("click", function (e) {
+            function setULOpen(subUL: JQuery) {
+                subUL.show();
+                subUL.find(".spExpend").text("-");
+                subUL.children("li").each(function (index, element) {
+                    if (index > 0) $(this).show();
+                    subUL.css({ "border": "1px solid #EEE" });
+                });
+                subUL.children("ul").each(function (index, element) {
+                    loopCheckOpen($(this), 1); // recursive open logic
+                });
+            }
 
-                    var transVal: string[] = $(e.currentTarget).attr("data-trans").split(",");
+            //local recursive adding structure
+            function recursiveAdd(cState: State, parent: State, level: number, parentObj: JQuery) {
 
-                    //loop and set active based on its transition 
-                    topUL.find("li").each(function () {
-                        var checkText: string = $(this).text();
-                        checkText = checkText.replace(" (init)", "");
-                        checkText = checkText.replace(" (final)", "");
-                        if (transVal.indexOf(checkText) > -1) {
-                            $(this).css({ "font-weight": "bold", "color": "#FF6666", "text-decoration": "none", "font-size": "100%" });
+                var newUL: JQuery;
+                var addVal: string = "";
+
+                if (cState.isInitial) addVal = " (init)";
+                if (cState.isFinal) addVal = " (final)";
+
+                if (cState.hasChild()) {
+
+                    var loopUL: JQuery = $("<ul data-name='" + cState.name + "'></ul>");
+                    parentObj.append(loopUL);
+                    parentObj.append(newUL);
+                    loopUL.data("wasClose", false);
+
+                    //first li refer to state itself
+                    var firstLi = $('<li data-name="' + cState.name + '" data-trans="' + cState.transitions.join(",") + '"></li > ');
+                    loopUL.append(firstLi);
+
+                    var nameSpan = $('<span data-name="' + cState.name + '" data-trans="' + cState.transitions.join(",") + '">' + cState.name + addVal + '</span>');
+                    nameSpan.on("click", function (e) {
+                        self.showLayoutStateActive($(this).attr("data-name"));
+                    });
+                    firstLi.append(nameSpan);
+
+                    var expandDiv = $("<span class='spExpend'>-</span>");
+                    expandDiv.data("ul", loopUL);
+                    firstLi.append(expandDiv);
+                    expendBtns.push(expandDiv);
+                    expandDiv.on("click", function () {
+                        var targetUL = $(this).data("ul");
+                        if ($(this).text().indexOf("-") > -1) {
+                            setULClose(targetUL);
+                            targetUL.data("wasClose", true);
                         } else {
-                            $(this).css({ "font-weight": "normal", "color": "#333", "text-decoration": "none", "font-size": "100%" });
+                            setULOpen(targetUL);
+                            targetUL.data("wasClose", false);
                         }
                     });
 
-                    $(this).css({ "color": "#CC3300", "font-weight": "bold", "text-decoration": "underline", "font-size": "120%" });
-                    var tranStr: string = $(e.currentTarget).attr("data-trans");
-                    tranStr = tranStr.replace(/,/g, " , ");
-                    outDiv.html("state: " + $(this).text() + "  <span style='padding-left:30px; '>  transitions: " + tranStr + "</span>");
+                    for (var tk in cState.childs) {
+                        recursiveAdd(cState.childs[tk], cState, level, loopUL);
+                    }
 
-                });
+                } else {
 
+                    var newLi = $('<li data-name="' + cState.name + '" data-trans="' + cState.transitions.join(",") + '">' + cState.name + addVal + '</li>');
+                    parentObj.append(newLi);
+                    newLi.on("click", function (e) {
+                        self.showLayoutStateActive($(this).attr("data-name"));
+                    });
+                }
+
+            }
+
+            //top functional buttons
+            var showUIBtn = $("<span class='spTopBtn' style='width:60px; display:none;'>show UI</span>");
+            useDiv.append(showUIBtn);
+
+            var hideUIBtn = $("<span class='spTopBtn' style='width:60px;'>hide UI</span>");
+            var openAllTbtn = $("<span class='spTopBtn'>open all</span>");
+            var closeAllTbtn = $("<span class='spTopBtn'>close all</span>");
+            titleDiv.prepend(closeAllTbtn);
+            titleDiv.prepend(openAllTbtn);
+            titleDiv.prepend(hideUIBtn);
+
+            closeAllTbtn.on("click", function () {
+                for (var k = 0; k < expendBtns.length; k++) {
+                    var ebtn: JQuery = expendBtns[k];
+                    var targetUL = ebtn.data("ul");
+                    setULClose(targetUL);
+                    targetUL.data("wasClose", true);
+                }
+            });
+            openAllTbtn.on("click", function () {
+                for (var k = 0; k < expendBtns.length; k++) {
+                    var ebtn: JQuery = expendBtns[k];
+                    var targetUL = ebtn.data("ul");
+                    targetUL.data("wasClose", false);
+                    targetUL.show();
+                    ebtn.text("-");
+                    targetUL.children("li").each(function (index, element) {
+                        if (index > 0) $(this).show();
+                        targetUL.css({ "border": "1px solid #EEE" });
+                    });
+                }
             });
 
-            headDiv.on("click", function (e) {
-                topUL.find("li").each(function () {
-                    $(this).css({ "font-weight": "normal", "color": "#333", "text-decoration": "none", "font-size": "100%" });
-                    outDiv.html("");
-                });
+            hideUIBtn.on("click", function () {
+                titleDiv.hide();
+                self.topUL.hide();
+                showUIBtn.show();
+            });
+            showUIBtn.on("click", function () {
+                titleDiv.show();
+                self.topUL.show();
+                showUIBtn.hide();
+            });
+
+        }
+
+        private showLayoutStateActive(name: string) {
+
+            console.log("showLayoutStateActive " + name);
+
+            var self = this;
+
+            this.topUL.find("li").each(function (index, element) {
+                //deactive all states first
+                $(this).css({ "font-weight": "normal", "color": "#333333", "border-color": "#EEE", "opacity": "0.5" });
+                $(this).css({ "font-weight": "normal", "color": "#333333", "border-color": "#EEE" });
+            });
+
+            this.topUL.find("li").each(function (index, element) {
+
+                //active item
+                if ($(this).attr("data-name") == name) {
+
+                    $(this).css({ "color": "#FF0000", "font-weight": "bold", "border-color": "#FF0000", "opacity": "1" });
+                    self.currentStateTxt.val($(this).attr("data-name") + " │ transitions: " + $(this).attr("data-trans").replace(/,/g, " , "));
+
+                    var transList: string[] = $(this).attr("data-trans").split(",");
+
+                    self.topUL.find("li").each(function (index, element) {
+                        if (transList.indexOf($(this).attr("data-name")) > -1) {
+                            console.log("set ON : " + $(this).attr("data-name"));
+                            console.log($(this).get(0));
+                            $(this).css({ "color": "#FF6666", "border-color": "#FF6666", "opacity": "1" });
+                        }
+                    });
+                }
+
             });
 
         }

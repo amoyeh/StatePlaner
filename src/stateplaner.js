@@ -59,6 +59,9 @@ var sp;
         return EventDispatcher;
     })();
     sp.EventDispatcher = EventDispatcher;
+})(sp || (sp = {}));
+var sp;
+(function (sp) {
     var State = (function (_super) {
         __extends(State, _super);
         function State(name, isInitial, isFinal) {
@@ -66,33 +69,43 @@ var sp;
             if (isFinal === void 0) { isFinal = false; }
             _super.call(this);
             this.treeDeep = 0;
+            this.isActive = false;
             this.name = name;
             this.transitions = [];
             this.childs = {};
             this.isInitial = isInitial;
             this.isFinal = isFinal;
         }
-        State.prototype.addChild = function () {
-            var args = [];
-            for (var _i = 0; _i < arguments.length; _i++) {
-                args[_i - 0] = arguments[_i];
+        State.prototype.addChild = function (child, toChild, toParent) {
+            if (toChild === void 0) { toChild = false; }
+            if (toParent === void 0) { toParent = false; }
+            if (this.isInitial || this.isFinal) {
+                console.log("state name:" + this.name + " can not add child. (type is initial or final)");
+                return;
             }
-            for (var k = 0; k < args.length; k++) {
-                if (args[k].constructor == State) {
-                    var loopOne = args[k];
-                    if (loopOne.parent)
-                        loopOne.parent.removeChild(loopOne);
-                    if (this.childs[loopOne.name]) {
-                        console.error("addChild error, state name must be unique on name: " + loopOne.name);
-                        return;
-                    }
-                    this.childs[loopOne.name] = loopOne;
-                    loopOne.parent = this;
-                    if (this.constructor != FSM) {
-                        loopOne.addTransition(this);
-                    }
-                    this.addTransition(loopOne);
-                }
+            if (child.constructor === Array) {
+                var list = child;
+                for (var k = 0; k < list.length; k++)
+                    this.addAChild(list[k], toChild, toParent);
+            }
+            if (child.constructor === State)
+                this.addAChild(child, toChild, toParent);
+        };
+        State.prototype.addAChild = function (child, toChild, toParent) {
+            if (this.childs[child.name]) {
+                console.error("addChild error, state name must be unique on name: " + child.name);
+                return;
+            }
+            if (child.parent)
+                child.parent.removeChild(child);
+            this.childs[child.name] = child;
+            child.parent = this;
+            if (toChild)
+                this.addTransition(child);
+            if (toParent)
+                child.addTransition(this);
+            if (child.isInitial) {
+                this.addTransition(child);
             }
         };
         State.prototype.removeChild = function (child) {
@@ -161,40 +174,28 @@ var sp;
             return false;
         };
         return State;
-    })(EventDispatcher);
+    })(sp.EventDispatcher);
     sp.State = State;
     var FSM = (function (_super) {
         __extends(FSM, _super);
         function FSM(name) {
             _super.call(this, name);
             this.history = [];
+            this.allParents = [];
         }
-        FSM.prototype.printTreeInfo = function () {
-            var output = this.name;
-            for (var key in this.allStates) {
-                var loopOne = this.allStates[key];
-                var addSpace = loopOne.treeDeep * 3;
-                var space = "";
-                while (addSpace > -1) {
-                    space += " ";
-                    addSpace--;
-                }
-                var extra = "";
-                if (loopOne.isInitial)
-                    extra += " (I)";
-                if (loopOne.isFinal)
-                    extra += " (F)";
-                output += "\n" + space + loopOne.name + extra;
-            }
-            return output;
-        };
         FSM.prototype.getState = function (name) {
             return this.allStates[name];
+        };
+        FSM.prototype.init = function (initState) {
+            this.isActive = true;
+            this.transitions.push(initState);
+            this.toState(initState);
         };
         FSM.prototype.buildTree = function () {
             this.history = [];
             this.allStates = {};
             this.treeLoop(this, this, 0);
+            var acceptAllTypes = [];
             function recursiveChild(rootState, loopOn) {
                 for (var key in loopOn.childs) {
                     rootState.allChilds.push(loopOn.childs[key].name);
@@ -203,6 +204,8 @@ var sp;
             }
             for (var key in this.allStates) {
                 var loop = this.allStates[key];
+                if (loop.acceptAllType)
+                    acceptAllTypes.push(loop);
                 loop.allParents = [];
                 if (loop.parent) {
                     var loopParent = loop.parent;
@@ -240,6 +243,14 @@ var sp;
                 if (hasChild)
                     recursiveChild(loop, loop);
             }
+            for (var k = 0; k < acceptAllTypes.length; k++) {
+                for (var key in this.allStates) {
+                    var loopS = this.allStates[key];
+                    if (loopS !== acceptAllTypes[k]) {
+                        loopS.addTransition(acceptAllTypes[k]);
+                    }
+                }
+            }
         };
         FSM.prototype.getCurrentState = function () {
             var current = this;
@@ -253,41 +264,70 @@ var sp;
                 result = this.allStates[this.history[this.history.length - backwardCount - 1]];
             return result;
         };
+        FSM.prototype.stateEnter = function (state, previous) {
+            if (!state.isActive) {
+                state.isActive = true;
+                console.log("enter >> " + state.name);
+                this.history.push(state.name);
+                state.enter(state, this, previous);
+                for (var key in state.childs) {
+                    if (state.childs[key].isInitial) {
+                        console.log("enter >> " + state.childs[key].name + " (isInitial)");
+                        state.childs[key].isActive = true;
+                        state.childs[key].enter(state.childs[key], this, previous);
+                        this.history.push(state.childs[key].name);
+                    }
+                }
+                if (state.isFinal) {
+                    console.log("exit [isFinal] >> " + state.name);
+                    state.exit(state, this, state.name);
+                    if (state.parent && state.parent.name != this.name) {
+                        console.log("exit parent [isFinal] >> " + state.parent.name);
+                        state.parent.exit(state.parent, this, state.name);
+                        this.history.push(state.parent.name);
+                    }
+                }
+                while (this.history.length > 20)
+                    this.history.shift();
+            }
+        };
+        FSM.prototype.stateExit = function (state, next) {
+            if (state.isActive) {
+                state.isActive = false;
+                state.exit(state, this, next);
+                console.log("exit  >> " + state.name);
+            }
+        };
         FSM.prototype.toState = function (toState) {
             var current = this.getCurrentState();
-            var toStateObj = this.allStates[toState];
-            if (current.transitions.indexOf(toState) > -1) {
-                if (toStateObj.allParents.indexOf(current.name) == -1) {
-                    this.fireEvent(new StateEvent(current, current.name + ".exit", { next: toStateObj.name }));
-                    current.exit(current, this, toStateObj.name);
-                }
-                this.fireEvent(new StateEvent(toStateObj, toStateObj.name + ".enter", { from: current.name }));
-                toStateObj.enter(toStateObj, this, current.name);
-                this.history.push(toStateObj.name);
-                for (var key in toStateObj.childs) {
-                    if (toStateObj.childs[key].isInitial) {
-                        this.fireEvent(new StateEvent(toStateObj.childs[key], toStateObj.childs[key].name + ".enter", { from: current.name }));
-                        toStateObj.childs[key].enter(toStateObj.childs[key], this, current.name);
-                        this.history.push(toStateObj.childs[key].name);
-                    }
-                }
-                if (toStateObj.isFinal) {
-                    if (toStateObj.parent) {
-                        this.fireEvent(new StateEvent(toStateObj, toStateObj.name + ".exit"));
-                        toStateObj.exit(toStateObj, this, "");
-                        this.fireEvent(new StateEvent(toStateObj.parent, toStateObj.parent.name + ".exit"));
-                        toStateObj.parent.exit(toStateObj.parent, this, "");
-                    }
-                }
-                if (this.divObj)
-                    this.showLayoutStateActive(this.getCurrentState().name);
-                return true;
+            var nextState = this.allStates[toState];
+            console.log("====>  current: " + current.name + " , next: " + nextState.name + " , next parent: " + nextState.parent.name);
+            if (nextState.parent.name != current.name) {
+                this.stateExit(current, nextState.name);
             }
-            else {
-                console.error(current.name + " doesn't have transition to: " + toState);
-                console.error(current.name + " transitions are : " + current.transitions);
-                return false;
+            var cps = current.allParents.concat();
+            var nps = nextState.allParents.concat();
+            var exitParentNames = [];
+            for (var c = 0; c < cps.length; c++) {
+                if (nps.indexOf(cps[c]) == -1)
+                    exitParentNames.push(cps[c]);
             }
+            for (var q = 0; q < exitParentNames.length; q++) {
+                var ep = this.allStates[exitParentNames[q]];
+                this.stateExit(ep, nextState.name);
+            }
+            var parentReverse = nextState.allParents.concat().reverse();
+            for (var p = 0; p < parentReverse.length; p++) {
+                var loopP = this.allStates[parentReverse[p]];
+                if (loopP) {
+                    if (!loopP.isActive)
+                        this.stateEnter(loopP, current.name);
+                }
+            }
+            this.stateEnter(nextState, current.name);
+            if (this.divObj)
+                this.showLayoutStateActive(this.getCurrentState().name);
+            return true;
         };
         FSM.prototype.setLayoutMap = function (divId) {
             var self = this;
@@ -360,7 +400,6 @@ var sp;
                     loopUL.append(firstLi);
                     var nameSpan = $('<span data-name="' + cState.name + '" data-trans="' + cState.transitions.join(",") + '">' + cState.name + addVal + '</span>');
                     nameSpan.on("click", function (e) {
-                        self.showLayoutStateActive($(this).attr("data-name"));
                     });
                     firstLi.append(nameSpan);
                     var expandDiv = $("<span class='spExpend'>-</span>");
@@ -377,6 +416,7 @@ var sp;
                             setULOpen(targetUL);
                             targetUL.data("wasClose", false);
                         }
+                        self.showLayoutStateActive(targetUL.attr("data-name"));
                     });
                     for (var tk in cState.childs) {
                         recursiveAdd(cState.childs[tk], cState, level, loopUL);
@@ -430,28 +470,66 @@ var sp;
                 self.topUL.show();
                 showUIBtn.hide();
             });
+            this.topUL.find("li").each(function (index, element) {
+                $(this).addClass("inactiveState");
+                $(this).removeClass("activeState activeTrans");
+            });
+            var newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            newSvg.setAttribute("width", useDiv.width().toString());
+            newSvg.setAttribute("height", useDiv.height().toString());
+            useDiv.prepend(newSvg);
+            this.svg = $(newSvg);
         };
         FSM.prototype.showLayoutStateActive = function (name) {
-            console.log("showLayoutStateActive " + name);
             var self = this;
+            this.svg.empty();
             this.topUL.find("li").each(function (index, element) {
-                $(this).css({ "font-weight": "normal", "color": "#333333", "border-color": "#EEE", "opacity": "0.5" });
-                $(this).css({ "font-weight": "normal", "color": "#333333", "border-color": "#EEE" });
+                $(this).addClass("inactiveState");
+                $(this).removeClass("activeState activeTrans");
             });
             this.topUL.find("li").each(function (index, element) {
                 if ($(this).attr("data-name") == name) {
-                    $(this).css({ "color": "#FF0000", "font-weight": "bold", "border-color": "#FF0000", "opacity": "1" });
+                    $(this).removeClass("inactiveState activeTrans");
+                    $(this).addClass("activeState");
+                    var aX = $(this).offset().left;
+                    var aY = $(this).offset().top;
                     self.currentStateTxt.val($(this).attr("data-name") + " │ transitions: " + $(this).attr("data-trans").replace(/,/g, " , "));
                     var transList = $(this).attr("data-trans").split(",");
                     self.topUL.find("li").each(function (index, element) {
                         if (transList.indexOf($(this).attr("data-name")) > -1) {
-                            console.log("set ON : " + $(this).attr("data-name"));
-                            console.log($(this).get(0));
-                            $(this).css({ "color": "#FF6666", "border-color": "#FF6666", "opacity": "1" });
+                            $(this).removeClass("inactiveState activeState");
+                            $(this).addClass("activeTrans");
                         }
                     });
                 }
             });
+        };
+        FSM.prototype.drawPath = function (aX, aY, toX, toY) {
+            if (aY >= toY) {
+                var c1 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                c1.setAttribute("cx", (aX - 15).toString());
+                c1.setAttribute("cy", (aY - 15).toString());
+                c1.setAttribute("r", "2");
+                c1.setAttribute("fill", "red");
+                var c2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                c2.setAttribute("cx", (aX - 10).toString());
+                c2.setAttribute("cy", (aY).toString());
+                c2.setAttribute("r", "2");
+                c2.setAttribute("fill", "red");
+                var c3 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                c3.setAttribute("cx", (aX - 15).toString());
+                c3.setAttribute("cy", (aY).toString());
+                c3.setAttribute("r", "2");
+                c3.setAttribute("fill", "blue");
+                var newpath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                var d = "M" + (aX - 10) + "," + aY + " Q" + (aX - 15) + "," + aY + " " + (aX - 15) + "," + (aY - 15) + " T" + toX + "," + toY;
+                newpath.setAttribute("d", d);
+                newpath.setAttribute("stroke", "#FF0000");
+                newpath.setAttribute("stroke-width", "1");
+                newpath.setAttribute("opacity", "1");
+                newpath.setAttribute("fill", "none");
+                this.svg.append(newpath);
+            }
         };
         return FSM;
     })(State);

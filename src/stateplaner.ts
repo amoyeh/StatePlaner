@@ -1,7 +1,5 @@
 ﻿/// <reference path="../dts/jquery.d.ts" />
-
 module sp {
-
     export class StateEvent {
         public target: any;
         public type: string;
@@ -12,18 +10,14 @@ module sp {
             this.values = values;
         }
     }
-
     export class EventDispatcher {
-
         private callBacks: { type: string; callbacks: any[] }[] = [];
-
         addEvent(type: string, func: any): void {
             if (this.callBacks[type] == null) {
                 this.callBacks[type] = [];
             }
             this.callBacks[type].push({ func: func });
         }
-
         removeEvent(type: string, func: any) {
             if (this.callBacks[type] != null) {
                 var callbackLen: number = this.callBacks[type].length;
@@ -35,7 +29,6 @@ module sp {
                 }
             }
         }
-
         hasEvent(type: string, func: any): boolean {
             if (this.callBacks[type] != null) {
                 var callbackLen: number = this.callBacks[type].length;
@@ -47,7 +40,6 @@ module sp {
             }
             return false;
         }
-
         fireEvent(event: StateEvent) {
             //console.log("F: " + event.type);
             if (this.callBacks[event.type] != null) {
@@ -59,6 +51,9 @@ module sp {
             }
         }
     }
+}
+
+module sp {
 
     export class State extends EventDispatcher {
 
@@ -67,6 +62,7 @@ module sp {
         public childs: { [name: string]: State };
         public transitions: string[];
         public treeDeep: number = 0;
+        public acceptAllType: boolean;
 
         public fsm: FSM;
 
@@ -78,6 +74,8 @@ module sp {
         public isInitial: boolean;
         public isFinal: boolean;
 
+        public isActive: boolean = false;
+
         constructor(name: string, isInitial: boolean = false, isFinal: boolean = false) {
             super();
             this.name = name;
@@ -87,24 +85,32 @@ module sp {
             this.isFinal = isFinal;
         }
 
-        public addChild(...args: any[]): void {
-            for (var k: number = 0; k < args.length; k++) {
-                if (args[k].constructor == State) {
-                    var loopOne: State = args[k];
-                    if (loopOne.parent) loopOne.parent.removeChild(loopOne);
-                    if (this.childs[loopOne.name]) {
-                        console.error("addChild error, state name must be unique on name: " + loopOne.name);
-                        return;
-                    }
-                    this.childs[loopOne.name] = loopOne;
-                    loopOne.parent = this;
-                    //adding transiton automatically
-                    if (this.constructor != FSM) {
-                        loopOne.addTransition(this);
-                    }
-                    this.addTransition(loopOne);
-                }
+        public addChild(child: any, toChild: boolean = false, toParent: boolean = false): void {
+            if (this.isInitial || this.isFinal) {
+                console.log("state name:" + this.name + " can not add child. (type is initial or final)");
+                return;
             }
+            if (child.constructor === Array) {
+                var list: State[] = child;
+                for (var k: number = 0; k < list.length; k++) this.addAChild(list[k], toChild, toParent);
+            }
+            if (child.constructor === State) this.addAChild(child, toChild, toParent);
+        }
+
+        private addAChild(child: State, toChild: boolean, toParent: boolean): void {
+            if (this.childs[child.name]) {
+                console.error("addChild error, state name must be unique on name: " + child.name);
+                return;
+            }
+            if (child.parent) child.parent.removeChild(child);
+            this.childs[child.name] = child;
+            child.parent = this;
+            if (toChild) this.addTransition(child);
+            if (toParent) child.addTransition(this);
+            if (child.isInitial) {
+                this.addTransition(child);
+            }
+
         }
 
         public removeChild(child: State): void {
@@ -184,32 +190,22 @@ module sp {
         private divObj: JQuery;
         private topUL: JQuery;
         private currentStateTxt: JQuery;
+        private svg: JQuery;
 
         constructor(name: string) {
             super(name);
             this.history = [];
-        }
-
-        public printTreeInfo(): string {
-            var output = this.name;
-            for (var key in this.allStates) {
-                var loopOne: State = this.allStates[key];
-                var addSpace: number = loopOne.treeDeep * 3;
-                var space: string = "";
-                while (addSpace > -1) {
-                    space += " ";
-                    addSpace--;
-                }
-                var extra: string = "";
-                if (loopOne.isInitial) extra += " (I)";
-                if (loopOne.isFinal) extra += " (F)";
-                output += "\n" + space + loopOne.name + extra;
-            }
-            return output;
+            this.allParents = [];
         }
 
         public getState(name: string): State {
             return this.allStates[name];
+        }
+
+        public init(initState: string): void {
+            this.isActive = true;
+            this.transitions.push(initState);
+            this.toState(initState);
         }
 
         public buildTree(): void {
@@ -217,6 +213,7 @@ module sp {
             this.history = [];
             this.allStates = {};
             this.treeLoop(this, this, 0);
+            var acceptAllTypes: State[] = [];
 
             function recursiveChild(rootState: State, loopOn: State): void {
                 for (var key in loopOn.childs) {
@@ -225,11 +222,14 @@ module sp {
                 }
             }
 
-            //update parent & child string data in all state
+            //update parent & child  data in all state
             for (var key in this.allStates) {
 
                 //find all parents up to root, store it
                 var loop: State = this.allStates[key];
+
+                if (loop.acceptAllType) acceptAllTypes.push(loop);
+
                 loop.allParents = [];
                 if (loop.parent) {
                     var loopParent: State = loop.parent;
@@ -239,11 +239,10 @@ module sp {
                     }
                 }
 
-                //add transition to special final state
+                //add transition to special final state (accept all parent transition setting
                 for (var key in this.allStates) {
                     var loop: State = this.allStates[key];
                     if (loop.isFinal && (loop.parent)) {
-
                         //find all siblings
                         var childList: string[] = [];
                         for (var key in loop.parent.childs) {
@@ -254,7 +253,6 @@ module sp {
                                 //loop.addTransition(pchild, true);
                             }
                         }
-
                         //adding parent's transition settings
                         var lptrans: string[] = loop.parent.transitions;
                         var lptranLen: number = lptrans.length;
@@ -277,6 +275,16 @@ module sp {
                 if (hasChild) recursiveChild(loop, loop);
             }
 
+            //for special acceptAllTpe
+            for (var k: number = 0; k < acceptAllTypes.length; k++) {
+                for (var key in this.allStates) {
+                    var loopS: State = this.allStates[key];
+                    if (loopS !== acceptAllTypes[k]) {
+                        loopS.addTransition(acceptAllTypes[k]);
+                    }
+                }
+            }
+
         }
 
         public getCurrentState(): State {
@@ -291,66 +299,153 @@ module sp {
             return result;
         }
 
+        private stateEnter(state: State, previous?: string): void {
+            if (!state.isActive) {
+                state.isActive = true;
+                console.log("enter >> " + state.name);
+                this.history.push(state.name);
+                state.enter(state, this, previous);
+                //enter any initial states in child
+                for (var key in state.childs) {
+                    if (state.childs[key].isInitial) {
+                        console.log("enter >> " + state.childs[key].name + " (isInitial)");
+                        state.childs[key].isActive = true;
+                        state.childs[key].enter(state.childs[key], this, previous);
+                        this.history.push(state.childs[key].name);
+                    }
+                }
+
+                //when enter final state, set to exit
+                //if state is final and has parent, exit parent
+                if (state.isFinal) {
+                    console.log("exit [isFinal] >> " + state.name);
+                    state.exit(state, this, state.name);
+                    if (state.parent && state.parent.name != this.name) {
+                        console.log("exit parent [isFinal] >> " + state.parent.name);
+                        state.parent.exit(state.parent, this, state.name);
+                        this.history.push(state.parent.name);
+                    }
+                }
+
+                //only keep 20 entries in history
+                while (this.history.length > 20) this.history.shift();
+
+            }
+        }
+        private stateExit(state: State, next?: string): void {
+            if (state.isActive) {
+                state.isActive = false;
+                state.exit(state, this, next);
+                console.log("exit  >> " + state.name);
+
+            }
+        }
+
         public toState(toState: string): boolean {
 
             //find the current active state, if undefined, use the root FSM
             var current: State = this.getCurrentState();
+            var nextState: State = this.allStates[toState];
 
-            var toStateObj: State = this.allStates[toState];
+            //if (current.transitions.indexOf(toState) == -1) {
+            //    console.error(current.name + " doesn't have transition to: " + toState);
+            //    console.error(current.name + " transitions are : " + current.transitions);
+            //    return false;
+            //}
 
-            if (current.transitions.indexOf(toState) > -1) {
+            console.log("====>  current: " + current.name + " , next: " + nextState.name + " , next parent: " + nextState.parent.name);
+            //if transition is valid
+            //if (current.transitions.indexOf(toState) > -1) {
 
-                //if the current leaving state is not in any parent level, exit must be called
-                if (toStateObj.allParents.indexOf(current.name) == -1) {
-
-                    //console.log("fire " + current.name + ".exit");
-                    this.fireEvent(new StateEvent(current, current.name + ".exit", { next: toStateObj.name }));
-                    current.exit(current, this, toStateObj.name);
-
-                }
-
-                //console.log("fire " + toStateObj.name + ".enter");
-                this.fireEvent(new StateEvent(toStateObj, toStateObj.name + ".enter", { from: current.name }));
-                toStateObj.enter(toStateObj, this, current.name);
-
-                this.history.push(toStateObj.name);
-
-                //find any child state that make inital and call it, also push those state into history
-                for (var key in toStateObj.childs) {
-                    if (toStateObj.childs[key].isInitial) {
-
-                        //console.log("fire " + toStateObj.childs[key].name + ".enter");
-                        this.fireEvent(new StateEvent(toStateObj.childs[key], toStateObj.childs[key].name + ".enter", { from: current.name }));
-                        toStateObj.childs[key].enter(toStateObj.childs[key], this, current.name);
-
-                        this.history.push(toStateObj.childs[key].name);
-                    }
-                }
-
-                //if the current state is set to final from its parent state, set parent to final
-                if (toStateObj.isFinal) {
-                    if (toStateObj.parent) {
-
-                        //console.log("fire " + toStateObj.name + ".exit");
-                        this.fireEvent(new StateEvent(toStateObj, toStateObj.name + ".exit"));
-                        toStateObj.exit(toStateObj, this, "");
-
-                        //console.log("fire " + toStateObj.parent.name + ".exit");
-                        this.fireEvent(new StateEvent(toStateObj.parent, toStateObj.parent.name + ".exit"));
-                        toStateObj.parent.exit(toStateObj.parent, this, "");
-
-                    }
-                }
-
-                if (this.divObj) this.showLayoutStateActive(this.getCurrentState().name);
-
-                return true;
-
-            } else {
-                console.error(current.name + " doesn't have transition to: " + toState);
-                console.error(current.name + " transitions are : " + current.transitions);
-                return false;
+            //current exit
+            //=============================================================================
+            //if nextState is not child of the current state, exit calls
+            if (nextState.parent.name != current.name) {
+                this.stateExit(current, nextState.name);
             }
+
+
+            //if current exiting has parent, make sure all parents that are not in the same tree structure exit
+            var cps: string[] = current.allParents.concat();
+            var nps: string[] = nextState.allParents.concat();
+            //console.log(current.name + " allParents : " + current.allParents);
+            //console.log(nextState.name + " allParents : " + nextState.allParents);
+            var exitParentNames: string[] = [];
+            for (var c: number = 0; c < cps.length; c++) {
+                if (nps.indexOf(cps[c]) == -1) exitParentNames.push(cps[c]);
+            }
+            //console.log("different parents : " + exitParentNames.join(" , "));
+            for (var q: number = 0; q < exitParentNames.length; q++) {
+                var ep: State = this.allStates[exitParentNames[q]];
+                this.stateExit(ep, nextState.name);
+            }
+
+
+            //next enter
+            //=============================================================================
+            //update and enter the state first
+            //if nextState has parent, make sure all parents are active and calls enter()
+            var parentReverse: string[] = nextState.allParents.concat().reverse();
+            for (var p: number = 0; p < parentReverse.length; p++) {
+                var loopP: State = this.allStates[parentReverse[p]];
+                if (loopP) {
+                    if (!loopP.isActive) this.stateEnter(loopP, current.name);
+                }
+            }
+
+            this.stateEnter(nextState, current.name);
+
+
+
+
+            ////if (nextState.allParents.indexOf(current.name) == -1) {
+            ////    //console.log("fire " + current.name + ".exit");
+            ////    this.fireEvent(new StateEvent(current, current.name + ".exit", { next: nextState.name }));
+            ////    current.exit(current, this, nextState.name);
+            ////}
+
+            //////if toStateObj and current does not have same parent, parent exit calls
+            ////if (current.parent && nextState.parent) {
+            ////    console.log("P:  " + current.parent.name + " N: " + nextState.parent.name);
+            ////    if (current.parent.name !== nextState.parent.name) {
+            ////        console.log("current.parent.name  " + current.parent.name + " nextState.parent.name " + nextState.parent.name);
+            ////    }
+            ////}
+
+
+
+            ////enter toStateObj
+            ////=============================================================================
+            ////console.log("fire " + toStateObj.name + ".enter");
+            //this.fireEvent(new StateEvent(nextState, nextState.name + ".enter", { from: current.name }));
+            //nextState.enter(nextState, this, current.name);
+
+            ////find any child state that make inital and call it, also push those state into history
+            //for (var key in nextState.childs) {
+            //    if (nextState.childs[key].isInitial) {
+            //        this.toState(nextState.childs[key].name);
+            //    }
+            //}
+
+            ////if the current state is set to final from its parent state, set parent to final
+            //if (nextState.isFinal) {
+            //    if (nextState.parent) {
+
+            //        //console.log("fire " + toStateObj.name + ".exit");
+            //        this.fireEvent(new StateEvent(nextState, nextState.name + ".exit"));
+            //        nextState.exit(nextState, this, "");
+
+            //        //console.log("fire " + toStateObj.parent.name + ".exit");
+            //        this.fireEvent(new StateEvent(nextState.parent, nextState.parent.name + ".exit"));
+            //        nextState.parent.exit(nextState.parent, this, "");
+
+            //    }
+            //}
+
+
+            if (this.divObj) this.showLayoutStateActive(this.getCurrentState().name);
+            return true;
+
         }
 
         public setLayoutMap(divId: string): void {
@@ -443,7 +538,7 @@ module sp {
 
                     var nameSpan = $('<span data-name="' + cState.name + '" data-trans="' + cState.transitions.join(",") + '">' + cState.name + addVal + '</span>');
                     nameSpan.on("click", function (e) {
-                        self.showLayoutStateActive($(this).attr("data-name"));
+                        //self.showLayoutStateActive($(this).attr("data-name"));
                     });
                     firstLi.append(nameSpan);
 
@@ -460,6 +555,7 @@ module sp {
                             setULOpen(targetUL);
                             targetUL.data("wasClose", false);
                         }
+                        self.showLayoutStateActive(targetUL.attr("data-name"));
                     });
 
                     for (var tk in cState.childs) {
@@ -509,7 +605,6 @@ module sp {
                     });
                 }
             });
-
             hideUIBtn.on("click", function () {
                 titleDiv.hide();
                 self.topUL.hide();
@@ -521,40 +616,93 @@ module sp {
                 showUIBtn.hide();
             });
 
+            this.topUL.find("li").each(function (index, element) {
+                $(this).addClass("inactiveState");
+                $(this).removeClass("activeState activeTrans");
+            });
+
+            //svg to draw graphics
+            var newSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            newSvg.setAttribute("width", useDiv.width().toString());
+            newSvg.setAttribute("height", useDiv.height().toString());
+            useDiv.prepend(newSvg);
+            this.svg = $(newSvg);
+
         }
 
         private showLayoutStateActive(name: string) {
-
-            console.log("showLayoutStateActive " + name);
-
             var self = this;
+            this.svg.empty();
+
 
             this.topUL.find("li").each(function (index, element) {
-                //deactive all states first
-                $(this).css({ "font-weight": "normal", "color": "#333333", "border-color": "#EEE", "opacity": "0.5" });
-                $(this).css({ "font-weight": "normal", "color": "#333333", "border-color": "#EEE" });
+                $(this).addClass("inactiveState");
+                $(this).removeClass("activeState activeTrans");
             });
-
             this.topUL.find("li").each(function (index, element) {
 
                 //active item
                 if ($(this).attr("data-name") == name) {
 
-                    $(this).css({ "color": "#FF0000", "font-weight": "bold", "border-color": "#FF0000", "opacity": "1" });
+                    $(this).removeClass("inactiveState activeTrans");
+                    $(this).addClass("activeState");
+
+                    var aX = $(this).offset().left;
+                    var aY = $(this).offset().top;
+
                     self.currentStateTxt.val($(this).attr("data-name") + " │ transitions: " + $(this).attr("data-trans").replace(/,/g, " , "));
-
                     var transList: string[] = $(this).attr("data-trans").split(",");
-
                     self.topUL.find("li").each(function (index, element) {
                         if (transList.indexOf($(this).attr("data-name")) > -1) {
-                            console.log("set ON : " + $(this).attr("data-name"));
-                            console.log($(this).get(0));
-                            $(this).css({ "color": "#FF6666", "border-color": "#FF6666", "opacity": "1" });
+                            $(this).removeClass("inactiveState activeState");
+                            $(this).addClass("activeTrans");
+                            //if ($(this).is(":visible")) {
+                            //    self.drawPath(aX, aY, $(this).offset().left, $(this).offset().top);
+                            //}
                         }
                     });
-                }
 
+                }
             });
+        }
+
+        //not ready
+        private drawPath(aX: number, aY: number, toX: number, toY: number): void {
+            //var newLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            //target node position y same or upper
+            if (aY >= toY) {
+                //to pt
+                var c1 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                c1.setAttribute("cx", (aX - 15).toString());
+                c1.setAttribute("cy", (aY - 15).toString());
+                c1.setAttribute("r", "2");
+                c1.setAttribute("fill", "red");
+                //this.svg.append(c1);
+                //start pt
+                var c2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                c2.setAttribute("cx", (aX - 10).toString());
+                c2.setAttribute("cy", (aY).toString());
+                c2.setAttribute("r", "2");
+                c2.setAttribute("fill", "red");
+                //this.svg.append(c2);
+                //middle pt
+                var c3 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                c3.setAttribute("cx", (aX - 15).toString());
+                c3.setAttribute("cy", (aY).toString());
+                c3.setAttribute("r", "2");
+                c3.setAttribute("fill", "blue");
+                //this.svg.append(c3);
+
+                var newpath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                var d: string = "M" + (aX - 10) + "," + aY + " Q" + (aX - 15) + "," + aY + " " + (aX - 15) + "," + (aY - 15) + " T" + toX + "," + toY;
+                newpath.setAttribute("d", d);
+                newpath.setAttribute("stroke", "#FF0000");
+                newpath.setAttribute("stroke-width", "1");
+                newpath.setAttribute("opacity", "1");
+                newpath.setAttribute("fill", "none");
+                this.svg.append(newpath);
+
+            }
 
         }
 

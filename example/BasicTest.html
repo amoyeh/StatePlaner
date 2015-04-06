@@ -16,16 +16,6 @@
             padding: 0px;
         }
 
-        #debugDiv1 {
-            padding: 10px;
-            border-radius: 5px;
-            background: #F0F0F0;
-        }
-
-        input[type=button] {
-            padding: 10px;
-        }
-
         #output {
             width: 100%;
             border: none;
@@ -68,8 +58,6 @@
         #greenDiv {
             background: #001F00;
         }
-
-
     </style>
 
 
@@ -119,20 +107,24 @@
                 log("exit green state next " + next);
                 $("#greenDiv").css("background-color", "#001F00");
             }
-            yellow.enter = function (target, fsm, from) {
+
+
+            //use fsm event to assign event callbacks on yellow enter and yellow exit
+            fsm.addEvent("yellow.enter", function (evt) {
                 $("#yellowDiv").css("background-color", "#FFCC00");
-                log("enter yellow state from " + from);
+                //evt.target -> current state
+                //evt.values.from -> from state name (string)
+                log("enter yellow state from " + evt.values.from);
                 $("#nextBtn").off("click");
                 $("#nextBtn").prop("value", "next red");
                 $("#nextBtn").on("click", function () {
                     fsm.toState("red");
                 });
-            }
-            yellow.exit = function (target, fsm, next) {
-                log("exit yellow state next " + next);
+            });
+            fsm.addEvent("yellow.exit", function (evt) {
+                log("exit yellow state next " + evt.values.next);
                 $("#yellowDiv").css("background-color", "#332900");
-            }
-
+            });
 
             fsm.addChild(red, green, yellow);
             fsm.buildTree();
@@ -168,9 +160,9 @@
         <div class="lightCircle" id="greenDiv"></div>
         <input type="button" id="nextBtn" value="nextBtn" />
     </div>
-    <h4>output</h4>
+    <h4 style="float:left;">output</h4><input type="button" style="float:left; padding:5px; margin:5px 5px 15px 25px;" id="clearOutPutBtn" value="clearOutPut" />
     <textarea id="output"></textarea>
-    <input type="button" style="margin-top:10px;" id="clearOutPutBtn" value="clearOutPut" />
+    
 
     <!--display state as map-->
     <div class="statePlaner" style="margin-top:20px;" id="stateMap"></div>

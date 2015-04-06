@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>State Layout</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplaner.js"></script>
+    <link rel="stylesheet" href="../src/stateplaner.css" />
+</head>
+<body>
+
+    <div class="statePlaner" id="layoutDiv"></div>
+
+    <script type="text/javascript">
+
+        var fsm;
+
+        $(document).ready(function () {
+
+            fsm = new sp.FSM("basicApp");
+
+            var state_A = new sp.State("state_A");
+            var state_B = new sp.State("state_B");
+            var state_C = new sp.State("state_C");
+            state_C.acceptAllType = true;
+
+            state_A.addTransition(state_B);
+            state_B.addTransition(state_C);
+            state_C.addTransition(state_A);
+
+            var state_B_1 = new sp.State("state_B_1", true);
+            var state_B_2 = new sp.State("state_B_2");
+            var state_B_3 = new sp.State("state_B_3", false, true);
+            state_B.addChild([state_B_1, state_B_2, state_B_3], true);
+
+            var state_B_2_1 = new sp.State("state_B_2_1", true);
+            var state_B_2_2 = new sp.State("state_B_2_2");
+            var state_B_2_3 = new sp.State("state_B_2_3", false, true);
+            state_B_2.addChild([state_B_2_1, state_B_2_2, state_B_2_3], true);
+
+            var state_B_2_2_1 = new sp.State("state_B_2_2_1", true);
+            var state_B_2_2_2 = new sp.State("state_B_2_2_2");
+            var state_B_2_2_3 = new sp.State("state_B_2_2_3", false, true);
+            state_B_2_2.addChild([state_B_2_2_1, state_B_2_2_2, state_B_2_2_3], true);
+
+            state_B_1.addTransition(state_B_2);
+            state_B_2.addTransition(state_B_3);
+
+            fsm.addChild([state_A, state_B, state_C]);
+
+            fsm.addEvent("error", function (evt) {
+                log(evt.values.msg);
+            });
+
+            fsm.buildTree();
+            fsm.setLayoutMap("layoutDiv");
+            fsm.init("state_A");
+            fsm.toState("state_B_2_3");
+            fsm.toState("state_B_3");
+            console.log("------------history-------------");
+            console.log(fsm.history);
+            //fsm.toState("state_B_2_3");
+            //fsm.toState("state_C");
+
+        });
+
+
+        //print log message
+        var msgs = [];
+        function log(newMsg) {
+            msgs.push(newMsg);
+            $("#output").val(msgs.join("\n"));
+            while (msgs.length > 20) msgs.shift();
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+
+        $("#clearOutPutBtn").on("click", function () {
+            msgs = [];
+            $("#output").val("");
+        });
+
+
+    </script>
+
+</body>
+</html>

@@ -5,7 +5,8 @@
     min-width: 82px;
     font: normal 13px arial;
     display: table;
-    color:#333;
+    color: #333;
+    position: relative;
 }
 
     .statePlaner .spTitle {
@@ -38,6 +39,7 @@
         padding: 5px;
         height: 15px;
         border: 1px solid #EEE;
+        margin-right: 5px;
     }
 
     .statePlaner .redInfo {
@@ -46,21 +48,28 @@
 
     .statePlaner .spul li, .statePlaner .spul ul {
         list-style: none;
-        margin: 5px;
-        padding: 5px;
-        border: 1px solid #EEE;
+        margin: 7px;
+        padding: 4px;
         float: left;
         cursor: pointer;
         display: table;
     }
 
-    .statePlaner .spul li {
+    .statePlaner .spul ul {
+        border: 1px solid #EEE;
     }
 
-    .statePlaner .spul svg {
+    .statePlaner .spul li {
+        background: #FFF;
+    }
+
+    .statePlaner svg {
         position: absolute;
-        background: #FFFFFF;
+        background: rgba(0,0,0,0);
         opacity: 1;
+        left: 0px;
+        top: 0px;
+        pointer-events: none;
     }
 
     .statePlaner .spul ul {
@@ -80,7 +89,7 @@
 
         .statePlaner .spul > ul li:first-child {
             position: relative;
-            left: -2px;
+            left: -1px;
             top: -7px;
             margin: -4px;
             width: 100%;
@@ -112,4 +121,24 @@
         left: 0px;
         top: 0px;
         box-sizing: border-box;
+    }
+
+    .statePlaner .inactiveState {
+        font-weight: normal;
+        color: #333;
+        border: 1px solid #EEE;
+    }
+
+    .statePlaner .activeState {
+        font-weight: bold;
+        color: #FF0000;
+        border: 1px solid #FF0000;
+        opacity: 1;
+    }
+
+    .statePlaner .activeTrans {
+        font-weight: normal;
+        color: #e6548f;
+        border: 1px solid #e6548f;
+        opacity: 1;
     }

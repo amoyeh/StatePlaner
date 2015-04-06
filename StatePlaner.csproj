@@ -18,11 +18,15 @@
     <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="example\BasicStates.html" />
     <Content Include="example\BasicTest.html" />
+    <Content Include="example\ATMTest.html" />
     <Content Include="example\StateLayout.html" />
     <Content Include="example\stateplaner.min.js" />
-    <Content Include="example\TrafficBasic.html" />
+    <Content Include="example\subStates.html" />
+    <Content Include="example\testLoop.html" />
     <Content Include="src\stateplaner.css" />
+    <Content Include="example\subStates2.html" />
     <Content Include="web.config" />
   </ItemGroup>
   <ItemGroup>
@@ -38,9 +42,8 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="dts\jquery.d.ts" />
-    <TypeScriptCompile Include="example\EventTest.ts" />
-    <TypeScriptCompile Include="example\TrafficBasic.ts" />
     <TypeScriptCompile Include="src\stateplaner.ts" />
+    <TypeScriptCompile Include="src\stateplanerUI.ts" />
   </ItemGroup>
   <PropertyGroup>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">12.0</VisualStudioVersion>

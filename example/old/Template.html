@@ -1,0 +1,69 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplanner.js"></script>
+    <script src="../src/stateplannerUI.js"></script>
+    <link rel="stylesheet" href="../src/stateplanner.css" />
+    <style type="text/css">
+        body {
+            font: normal 15px arial;
+        }
+
+        h4 {
+            margin: 10px 0px;
+            padding: 0px;
+        }
+
+        #output {
+            width: 100%;
+            border: none;
+            background: #EEEEEE;
+            border-radius: 5px;
+            height: 200px;
+        }
+    </style>
+
+
+
+    <script type="text/javascript">
+
+        function EventTest() {
+
+            //create traffic simulation
+            var fsm = new sp.FSM("TrafficApp");
+            fsm.addChild();
+            fsm.buildTree();
+            fsm.init("red");
+
+            $("#clearOutPutBtn").on("click", function () {
+                msgs = [];
+                $("#output").val("");
+            });
+            var debugUI = new sp.FSMUI(fsm, "layoutDiv");
+            debugUI.init();
+            $("#layoutDiv").css({ "left": "5px", "top": "380px" });
+        }
+
+        //print log message
+        var msgs = [];
+        function log(newMsg) {
+            msgs.push(newMsg);
+            $("#output").val(msgs.join("\n"));
+            while (msgs.length > 20) msgs.shift();
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+    </script>
+</head>
+
+<body onload="Hierarchical()">
+
+    <h4 style="float:left;">output</h4><input type="button" style="float:left; padding:5px; margin:5px 5px 15px 25px;" id="clearOutPutBtn" value="clearOutPut" />
+    <textarea id="output"></textarea>
+
+
+    <!--display state as map-->
+    <div class="statePlaner" id="layoutDiv"></div>
+</body>
+</html>

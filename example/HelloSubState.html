@@ -1,0 +1,140 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplanner.js"></script>
+    <script src="../src/stateplannerUI.js"></script>
+    <link rel="stylesheet" href="../src/stateplanner.css" />
+    <style type="text/css">
+        body {
+            font: normal 15px arial;
+        }
+
+        h4 {
+            margin: 10px 0px;
+            padding: 0px;
+        }
+
+        #output {
+            width: 100%;
+            border: none;
+            background: #EEEEEE;
+            border-radius: 5px;
+            height: 250px;
+        }
+
+        #buttonList {
+            padding: 10px;
+            height: 40px;
+        }
+
+            #buttonList:after {
+                display: block;
+                content: "";
+                clear: both;
+            }
+
+        input[type=button] {
+            padding: 5px;
+            margin-right: 10px;
+        }
+
+        .sectionDiv {
+            float: left;
+            padding: 5px;
+        }
+
+        #layoutDiv {
+            position: absolute;
+            left: 5px;
+            top: 380px;
+        }
+    </style>
+
+    <script type="text/javascript">
+
+        var fsm;
+
+        function runTest() {
+
+            fsm = new sp.FSM("HelloSubState");
+
+            var stateA = fsm.createState("stateA");
+            var stateB = fsm.createState("stateB");
+            var stateC = fsm.createState("stateC");
+            fsm.addChild([stateA, stateB, stateC]);
+
+            var stateB1 = fsm.createState("stateB1");
+            var stateB2 = fsm.createState("stateB2");
+            //adding sub state stateB1 and stateB2 to stateB
+            //sp.FSM.A_TO_B : create transitions, stateB->stateB1 , stateB->stateB2
+            stateB.addChild([stateB1, stateB2], sp.FSM.A_TO_B);
+
+            var stateB21 = fsm.createState("stateB21");
+            var stateB22 = fsm.createState("stateB22");
+            //adding sub state stateB21 and stateB22 to stateB2
+            //sp.B_TO_A.A_TO_B : create transitions, stateB21->stateB2 , stateB22->stateB2
+            stateB2.addChild([stateB21, stateB22], sp.FSM.B_TO_A);
+
+            //create sub state stateC1 , stateC2 to stateC , create transition both ways
+            stateC.addChild([fsm.createState("stateC1"), fsm.createState("stateC2")], sp.FSM.BOTH);
+
+            //adding transtions for testing
+            stateA.addTransition(stateB22, sp.FSM.BOTH);
+            stateB22.addTransition(fsm.getState("stateC1"), sp.FSM.BOTH);
+
+            //adding events
+            fsm.addEvent("error", function (e) {
+                log(e.values.msg);
+            });
+
+            fsm.addEvent("stateEnter", function (e) {
+                log("enter             >> current: " + e.values.current.name + " | from: " + e.values.from.name);
+            });
+
+            fsm.addEvent("stateExit", function (e) {
+                log("exit              >> current: " + e.values.current.name + " | next: " + e.values.next.name);
+            });
+
+            fsm.buildTree();
+
+            fsm.init("stateA");
+
+            //setting debug UI display
+            var debugUI = new sp.FSMUI(fsm, "layoutDiv");
+            debugUI.init();
+
+        }
+
+        //print log message
+        var msgs = [];
+        function log(newMsg) {
+            msgs.push(newMsg);
+            $("#output").val(msgs.join("\n"));
+            while (msgs.length > 20) msgs.shift();
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+        function clearOutPut() {
+            msgs = [];
+            $("#output").val("");
+        }
+    </script>
+</head>
+
+<body onload="runTest()">
+
+    <div id="buttonList">
+        <div class="sectionDiv">
+            <input type="button" onclick="fsm.toState('stateA');" value="to stateA" />
+            <input type="button" onclick="fsm.toState('stateB22');" value="to stateB22" />
+            <input type="button" onclick="fsm.toState('stateC1');" value="to stateC1" />
+        </div>
+    </div>
+
+    <h4 style="float:left;">output</h4><input type="button" style="float:left; padding:5px; margin:5px 5px 15px 25px;" id="clearOutPutBtn" value="clearOutPut" onclick="clearOutPut()" />
+    <textarea id="output"></textarea>
+
+    <div class="statePlaner" id="layoutDiv"></div>
+</body>
+</html>

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
 VisualStudioVersion = 12.0.30324.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StatePlaner", "StatePlaner.csproj", "{A3F29BE1-3232-4D04-B4EF-3B134A09E1CE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StatePlanner", "StatePlanner.csproj", "{A3F29BE1-3232-4D04-B4EF-3B134A09E1CE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

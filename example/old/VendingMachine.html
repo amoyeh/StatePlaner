@@ -1,0 +1,277 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplanner.js"></script>
+    <script src="../src/stateplannerUI.js"></script>
+    <link rel="stylesheet" href="../src/stateplanner.css" />
+    <style type="text/css">
+        body {
+            font: normal 15px arial;
+        }
+
+        h4 {
+            margin: 10px 0px;
+            padding: 0px;
+        }
+
+        #output {
+            width: 100%;
+            border: none;
+            background: #EEEEEE;
+            border-radius: 5px;
+            height: 200px;
+        }
+
+        .appDiv {
+            width: 500px;
+            height: 200px;
+            position: relative;
+        }
+
+        input[type=button] {
+            padding: 5px;
+        }
+
+        .vcenter {
+            position: relative;
+            top: 50%;
+            transform: translateY(-50%);
+            text-align: center;
+        }
+
+        .screenBase {
+            width: 500px;
+            height: 200px;
+            position: absolute;
+            color: #FFF;
+            display: none;
+        }
+    </style>
+
+
+
+    <script type="text/javascript">
+
+        var fsm;
+
+        function vendingMachineTest() {
+
+            //create traffic simulation
+            fsm = new sp.FSM("VendingApp");
+
+            var idle = new sp.State("idle");
+            var insertCoin = new sp.State("insertCoin");
+            var waitForInput = new sp.State("waitForInput");
+            var dropCoin = new sp.State("dropCoin");
+            var dropItem = new sp.State("dropItem");
+            var outOfOrder = new sp.State("outOfOrder");
+            outOfOrder.acceptAllType = true;
+            fsm.addChild([idle, insertCoin, waitForInput, dropCoin, dropItem, outOfOrder]);
+
+            var coinCheck = new sp.State("coinCheck", true);
+            var coinValid = new sp.State("coinValid", false, true);
+            var coinError = new sp.State("coinError", false, true);
+            insertCoin.addChild([coinCheck, coinValid, coinError]);
+
+            idle.addTransition([insertCoin]);
+            insertCoin.addTransition([waitForInput, dropCoin]);
+
+            coinCheck.addTransition([coinValid, coinError]);
+            waitForInput.addTransition([dropItem, dropCoin]);
+            dropCoin.addTransition([idle]);
+            dropItem.addTransition([idle]);
+
+            fsm.buildTree();
+
+            idle.enter = function () {
+                $("#idleScreen").show();
+            }
+            idle.exit = function () {
+                $("#idleScreen").hide();
+            }
+
+            insertCoin.enter = function () {
+                $("#insertCoinScreen").show();
+            }
+            insertCoin.exit = function (state, fsm, from) {
+                $("#insertCoinScreen").hide();
+                //if coming from child final state
+                if (from == coinValid.name) {
+                    fsm.toState("waitForInput");
+                }
+                if (from == coinError.name) {
+                    fsm.toState("dropCoin");
+                }
+            }
+
+            //coinCheck, coinValid and coinErrors are the sub sates in the insertCoint
+            coinCheck.enter = function () {
+                $("#coinCheckDiv").show();
+            }
+            coinCheck.exit = function () {
+                $("#coinCheckDiv").hide();
+            }
+            coinError.enter = function () {
+                $("#coinErrorScreen").show();
+            }
+            coinError.exit = function () {
+                $("#coinErrorScreen").hide();
+                clearInterval(coinErrorInt);
+            }
+
+            coinValid.enter = function () {
+                //final state, parent exit() calls after
+                fsm.finalStateExit(coinValid);
+            }
+
+            coinError.enter = function () {
+                $("#coinErrorScreen").show();
+
+            }
+            coinError.exit = function () {
+                $("#coinErrorScreen").hide();
+            }
+
+            waitForInput.enter = function () {
+                $("#waitForInputScreen").show();
+            }
+            waitForInput.exit = function () {
+                $("#waitForInputScreen").hide();
+            }
+
+            var dropCoinInt;
+            var dropCoinSec = 3;
+            dropCoin.enter = function () {
+                $("#dropCoinScreen").show();
+                dropCoinSec = 3;
+                $("#dropCoinDiv").text("coin dropped, back to idle in 3 seconds");
+                dropCoinInt = setInterval(function () {
+                    dropCoinSec--;
+                    $("#dropCoinDiv").text("coin dropped, back to idle in " + dropCoinSec + " seconds");
+                    if (dropCoinSec <= 0) {
+                        fsm.toState("idle");
+                        clearInterval(dropCoinInt);
+                    }
+                }, 1000);
+            }
+            dropCoin.exit = function () {
+                $("#dropCoinScreen").hide();
+                clearInterval(dropCoinInt);
+            }
+
+            var dropItemInt;
+            var dropItemSec = 3;
+            dropItem.enter = function () {
+                $("#dropItemScreen").show();
+                dropItemSec = 3;
+                $("#dropItemDiv").text("item released, back to idle in 3 seconds");
+                dropItemInt = setInterval(function () {
+                    dropItemSec--;
+                    $("#dropItemDiv").text("item released, back to idle in " + dropItemSec + " seconds");
+                    if (dropItemSec <= 0) {
+                        fsm.toState("idle");
+                        clearInterval(dropItemInt);
+                    }
+                }, 1000);
+            }
+            dropItem.exit = function () {
+                $("#dropItemScreen").hide();
+                clearInterval(dropItemInt);
+            }
+
+            outOfOrder.enter = function () {
+                $("#outOfOrderScreen").show();
+                $("#outOfOrderBtn").hide();
+            }
+
+            fsm.init("idle");
+
+            $("#clearOutPutBtn").on("click", function () {
+                msgs = [];
+                $("#output").val("");
+            });
+
+            var debugUI = new sp.FSMUI(fsm, "layoutDiv");
+            debugUI.init();
+            $("#layoutDiv").css({ "left": "5px", "top": "380px" });
+
+        }
+
+        //print log message
+        var msgs = [];
+        function log(newMsg) {
+            msgs.push(newMsg);
+            $("#output").val(msgs.join("\n"));
+            while (msgs.length > 20) msgs.shift();
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+
+
+    </script>
+</head>
+
+<body onload="vendingMachineTest()">
+
+    <div class="appDiv">
+
+        <div class="screenBase" style="background: #175d90;" id="idleScreen">
+            <div class="vcenter"> vending machine in idle. <input type="button" value="insert coin" onclick="fsm.toState('insertCoin')" /></div>
+        </div>
+
+        <div class="screenBase" style="background: #175d90;" id="insertCoinScreen">
+            <div class="vcenter">
+                <div id="coinCheckDiv">coin inserted, checking now.</div>
+                <br />
+                <input type="button" value="to coinValid" onclick="fsm.toState('coinValid')" />
+                <input type="button" value="to coinError" onclick="fsm.toState('coinError')" />
+            </div>
+        </div>
+
+        <div class="screenBase" style="background: #175d90;" id="waitForInputScreen">
+            <div class="vcenter">
+                <div id="coinCheckDiv">wait for user to pick product</div>
+                <br />
+                <input type="button" value="buy product (to dropItem state)" onclick="fsm.toState('dropItem')" />
+                <input type="button" value="cancel (to dropCoin state)" onclick="fsm.toState('dropCoin')" />
+            </div>
+        </div>
+
+        <div class="screenBase" style="background: #175d90;" id="dropItemScreen">
+            <div class="vcenter">
+                <div id="dropItemDiv"></div>
+            </div>
+        </div>
+
+        <div class="screenBase" style="background: #175d90;" id="coinErrorScreen">
+            <div class="vcenter">
+                <div> Coin Error</div><br />
+                <input type="button" value="click to call final state fsm.finalStateExit('coinValid')" onclick="fsm.finalStateExit('coinError')" />
+            </div>
+        </div>
+
+        <div class="screenBase" style="background: #175d90;" id="dropCoinScreen">
+            <div class="vcenter">
+                <div id="dropCoinDiv"></div>
+            </div>
+        </div>
+
+        <div class="screenBase" style="background: #175d90;" id="outOfOrderScreen">
+            <div class="vcenter">
+                <div> machine out of order... reload page to restart</div>
+            </div>
+        </div>
+
+        <input type="button" id="outOfOrderBtn" value="to outOfOrder" onclick="fsm.toState('outOfOrder')" style="position:absolute; right:10px; top:10px;" />
+
+    </div>
+
+    <h4 style="float:left;">output</h4><input type="button" style="float:left; padding:5px; margin:5px 5px 15px 25px;" id="clearOutPutBtn" value="clearOutPut" />
+    <textarea id="output"></textarea>
+    <!--display state as map-->
+    <div class="statePlaner" id="layoutDiv"></div>
+
+
+</body>
+</html>

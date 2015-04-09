@@ -1,4 +1,4 @@
-# StatePlaner
+# StatePlanner
 ###A rich feature and extensible Javascript hierarchical finite state machine library. 
 
 ####features####

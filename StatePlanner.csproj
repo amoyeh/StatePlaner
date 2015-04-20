@@ -18,8 +18,10 @@
     <IISExpressUseClassicPipelineMode />
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="example\HelloFSM.html" />
-    <Content Include="example\HelloSubState.html" />
+    <Content Include="example\4.ExampleTrafficLight.html" />
+    <Content Include="example\1.HelloFSM.html" />
+    <Content Include="example\2.HelloSubState.html" />
+    <Content Include="example\3.InitAndFinalType.html" />
     <Content Include="example\old\HierarchicalTest.html" />
     <Content Include="example\old\InitialFinal.html" />
     <Content Include="example\old\BasicStates.html" />
@@ -36,6 +38,8 @@
     <Content Include="wordpressDoc\intro.html" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="example\5.ExampleVendingMachine.html" />
+    <Content Include="example\6.MinerBob.html" />
     <None Include="web.Debug.config">
       <DependentUpon>web.config</DependentUpon>
     </None>

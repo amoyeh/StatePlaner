@@ -11,6 +11,7 @@
             font: normal 15px arial;
         }
 
+
         h4 {
             margin: 10px 0px;
             padding: 0px;
@@ -58,32 +59,32 @@
 
         function runTest() {
 
-            fsm = new sp.FSM("HelloFSM");
+            fsm = new sp.FSM("HelloSubState");
+
             var stateA = fsm.createState("stateA");
             var stateB = fsm.createState("stateB");
             var stateC = fsm.createState("stateC");
-            var stateD = fsm.createState("stateD");
-            var stateE = fsm.createState("stateE");
+            fsm.addChild([stateA, stateB, stateC]);
 
-            //add stateA ~ stateE to fsm root
-            fsm.addChild([stateA, stateB, stateC, stateD, stateE]);
+            var stateB1 = fsm.createState("stateB1");
+            var stateB2 = fsm.createState("stateB2");
+            //adding sub state stateB1 and stateB2 to stateB
+            //sp.FSM.A_TO_B : create transitions, stateB->stateB1 , stateB->stateB2
+            stateB.addChild([stateB1, stateB2], sp.FSM.A_TO_B);
 
-            //adding stateA transition to stateB | stateA -> stateB
-            stateA.addTransition(stateB);
+            var stateB21 = fsm.createState("stateB21");
+            var stateB22 = fsm.createState("stateB22");
+            //adding sub state stateB21 and stateB22 to stateB2
+            //sp.B_TO_A.A_TO_B : create transitions, stateB21->stateB2 , stateB22->stateB2
+            stateB2.addChild([stateB21, stateB22], sp.FSM.B_TO_A);
 
-            //get state by string id using fsm.getState()
-            //state B == fsm.getState("stateB")
+            //create sub state stateC1 , stateC2 to stateC , create transition both ways
+            stateC.addChild([fsm.createState("stateC1"), fsm.createState("stateC2")], sp.FSM.BOTH);
 
-            //adding stateB transition to stateC , bothway  | stateB <-> stateC
-            fsm.getState("stateB").addTransition(stateC, sp.FSM.BOTH);
-
-            //adding stateD transition to stateC and stateB
-            stateD.addTransition([fsm.getState("stateC"), stateB]);
-
-            //stateE set to accept all other states, after fsm.buildTree() calls, any other state will have the transition to stateE
-            stateE.addTransition(fsm.getState("stateA"));
-            stateE.acceptAll = true;
-
+            //adding transtions for testing
+            stateA.addTransition(stateB22, sp.FSM.BOTH);
+            stateB22.addTransition(fsm.getState("stateC1"), sp.FSM.BOTH);
+            fsm.getState("stateC1").addTransition(stateA);
 
             //adding events
             fsm.addEvent("error", function (e) {
@@ -97,14 +98,6 @@
             fsm.addEvent("stateExit", function (e) {
                 log("exit              >> current: " + e.values.current.name + " | next: " + e.values.next.name);
             });
-
-            //adding specific enter & exit event on stateA
-            stateA.enter = function (current, fsm, from) {
-                log("stateA.enter()    >> current: " + current.name + " | from: " + from.name);
-            }
-            stateA.exit = function (current, fsm, next) {
-                log("stateA.exit()     >> current: " + current.name + " | next: " + next.name);
-            }
 
             fsm.buildTree();
 
@@ -136,10 +129,8 @@
     <div id="buttonList">
         <div class="sectionDiv">
             <input type="button" onclick="fsm.toState('stateA');" value="to stateA" />
-            <input type="button" onclick="fsm.toState('stateB');" value="to stateB" />
-            <input type="button" onclick="fsm.toState('stateC');" value="to stateC" />
-            <input type="button" onclick="fsm.toState('stateD');" value="to stateD" />
-            <input type="button" onclick="fsm.toState('stateE');" value="to stateE" />
+            <input type="button" onclick="fsm.toState('stateB22');" value="to stateB22" />
+            <input type="button" onclick="fsm.toState('stateC1');" value="to stateC1" />
         </div>
     </div>
 

@@ -24,7 +24,7 @@ var sp;
                 console.log(msg);
             }
         };
-        FSMUI.prototype.init = function () {
+        FSMUI.prototype.init = function (cssSetting) {
             this.useDiv.empty();
             var self = this;
             var titleDiv = $("<div class='spTitle'></div>");
@@ -119,6 +119,9 @@ var sp;
             newSvg.setAttribute("height", this.useDiv.height().toString());
             this.useDiv.prepend(newSvg);
             this.svg = $(newSvg);
+            if (cssSetting) {
+                this.useDiv.css(cssSetting);
+            }
             this.toCurrentState();
         };
         FSMUI.prototype.recursiveAdd = function (cState, parent, level, parentObj) {
@@ -129,7 +132,7 @@ var sp;
                 addVal = " (init)";
             if (cState.isFinal)
                 addVal = " (final)";
-            if (cState.hasChild()) {
+            if (cState.childs.length > 0) {
                 var loopUL = $("<ul data-name='" + cState.name + "'></ul>");
                 parentObj.append(loopUL);
                 parentObj.append(newUL);

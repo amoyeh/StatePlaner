@@ -1,0 +1,268 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplanner.js"></script>
+    <script src="../src/stateplannerUI.js"></script>
+    <link rel="stylesheet" href="../src/stateplanner.css" />
+    <style type="text/css">
+        body {
+            font: normal 15px arial;
+        }
+
+        h4 {
+            margin: 10px 0px;
+            padding: 0px;
+        }
+
+        #output {
+            width: 100%;
+            border: none;
+            background: #EEEEEE;
+            border-radius: 5px;
+            height: 250px;
+        }
+
+        #machineBox {
+            width: 800px;
+            height: 300px;
+            border-radius: 10px;
+            background: #333;
+            margin: 10px 0px;
+            color: #FFF;
+        }
+
+        #mainDiv {
+            position: absolute;
+            width: 800px;
+            height: 300px;
+        }
+
+        .centerDiv {
+            position: absolute;
+            width: 600px;
+            height: 200px;
+            margin: auto;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            text-align: center;
+            border-radius: 4px;
+            border: 1px solid #666;
+        }
+
+        .btn {
+            width: 150px;
+            height: 50px;
+            border-radius: 6px;
+            border: 2px solid #EEE;
+            line-height: 50px;
+            cursor: pointer;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -khtml-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            text-align: center;
+        }
+    </style>
+
+    <script type="text/javascript">
+
+        var fsm;
+        var coinValue = 0;
+
+        function runTest() {
+
+            fsm = new sp.FSM("vendingMachineApp");
+
+            var idle = fsm.createState("idle").addTo(fsm);
+
+            var insertCoin = fsm.createState("insertCoin").addTo(fsm);
+            var selectItem = fsm.createState("selectItem").addTo(fsm);
+            var dropItem = fsm.createState("dropItem").addTo(fsm);
+            var cancel = fsm.createState("cancel").addTo(fsm);
+
+            idle.addTransition([insertCoin]);
+
+            insertCoin.addTransition([selectItem, cancel]);
+
+            selectItem.addTransition([dropItem, cancel]);
+
+            dropItem.addTransition([idle]);
+
+            cancel.addTransition([idle]);
+
+            var outOfService = fsm.createState("outOfService", sp.FSM.acceptAll).addTo(fsm);
+
+            idle.enter = function (target, fsm, from, data) {
+                $("#idleStateDiv").show();
+                $("#cancelBtnDiv").hide();
+            }
+            idle.exit = function (target, fsm, next, data) {
+                $("#idleStateDiv").hide();
+            }
+
+            insertCoin.enter = function (target, fsm, from, data) {
+                coinValue = data;
+                $("#insertCoinDiv").show();
+                $(".coinDisplay").text(coinValue);
+                $("#cancelBtnDiv").show();
+            }
+            insertCoin.exit = function (target, fsm, next, data) {
+                $("#insertCoinDiv").hide();
+            }
+
+            selectItem.enter = function (target, fsm, from, data) {
+                $("#selectDiv").show();
+                $("#cancelBtnDiv").show();
+            }
+            selectItem.exit = function (target, fsm, next, data) {
+                $("#selectDiv").hide();
+            }
+
+            var dropTime, dropInt;
+            dropItem.enter = function (target, fsm, from, data) {
+                $("#cancelBtnDiv").hide();
+                var returnChange = coinValue - 30;
+                coinValue = 0;
+                $("#dropDiv").show();
+                $("#dropItemName").text(data + " dispensing , return change " + returnChange);
+                $("#dropTime").text("drop in 2");
+                dropTime = 1;
+                dropInt = setInterval(function () {
+                    if (dropTime <= 0) {
+                        fsm.toState("idle");
+                    }
+                    $("#dropTime").text("drop in " + dropTime);
+                    dropTime--;
+                    console.log("dropTimedropTimedropTime " + dropTime);
+                }, 1000);
+            }
+            dropItem.exit = function (target, fsm, from, data) {
+                $("#dropDiv").hide();
+                clearInterval(dropInt);
+            }
+
+            var cancelTime, cancelInt;
+            cancel.enter = function () {
+                $("#cancelDiv").show();
+                $("#cancelBtnDiv").hide();
+                $("#cancelTxt").text("cancelling , return coins " + coinValue);
+                $("#cancelTime").text("cancel in 2");
+                cancelTime = 1;
+                cancelInt = setInterval(function () {
+                    if (cancelTime <= 0) {
+                        fsm.toState("idle");
+                    }
+                    $("#cancelTime").text("cancel in " + cancelTime);
+                    cancelTime--;
+                    console.log("cancelTimecancelTime " + cancelTime);
+                }, 1000);
+            }
+
+            cancel.exit = function () {
+                $("#cancelDiv").hide();
+                clearInterval(cancelInt);
+            }
+
+            fsm.buildTree();
+            fsm.init("idle");
+
+            //setting debug UI display
+            var debugUI = new sp.FSMUI(fsm, "layoutDiv");
+            debugUI.init({ "left": "300px", "top": "350px" });
+
+        }
+
+        function addCoin(amt) {
+            coinValue += amt;
+            $(".coinDisplay").text(coinValue);
+            if (coinValue >= 30) {
+                fsm.toState("selectItem");
+            }
+        }
+
+        //print log message
+        var msgs = [];
+        function log(newMsg) {
+            msgs.push(newMsg);
+            $("#output").val(msgs.join("\n"));
+            while (msgs.length > 20) msgs.shift();
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+        function clearOutPut() {
+            msgs = [];
+            $("#output").val("");
+        }
+    </script>
+</head>
+
+<body onload="runTest()">
+
+    <div id="machineBox">
+
+        <div id="mainDiv">
+
+            <div id="cancelBtnDiv">
+                <div class="btn" style="position:absolute; right:10px; top:10px; width:80px; height:30px; line-height:30px;" onclick="fsm.toState('cancel')">Cancel</div>
+            </div>
+
+            <!-- idle Screen -->
+            <div id="idleStateDiv" class="centerDiv">
+                <div>
+                    <h2>State Planner Vending Machine</h2>
+                    <h4>INSERT COINS</h4>
+                </div>
+                <div class="btn" style="position:absolute; top:110px; left: 100px;" onclick="fsm.toState('insertCoin', 5)">INSERT 5</div>
+                <div class="btn" style="position:absolute; top:110px; left: 350px;" onclick="fsm.toState('insertCoin', 10)">INSERT 10</div>
+            </div>
+
+            <!-- insertcoin Screen -->
+            <div id="insertCoinDiv" class="centerDiv" style="display:none;">
+                <div>
+                    <h2 class="coinDisplay"></h2>
+                    <h4>30 coins needed</h4>
+                </div>
+                <div class="btn" style="position:absolute; top:110px; left: 100px;" onclick="addCoin(5)">INSERT 5</div>
+                <div class="btn" style="position:absolute; top:110px; left: 350px;" onclick="addCoin(10)">INSERT 10</div>
+            </div>
+
+            <!-- pick item screen -->
+            <div id="selectDiv" class="centerDiv" style="display:none;">
+                <div>
+                    <h2 class="coinDisplay"></h2>
+                    <h4>please select</h4>
+                </div>
+                <div class="btn" style="position:absolute; top:110px; left: 100px;" onclick="fsm.toState('dropItem', 'soda')">Soda</div>
+                <div class="btn" style="position:absolute; top:110px; left: 350px;" onclick="fsm.toState('dropItem', 'juice')">Juice</div>
+            </div>
+
+            <!-- drop item screen -->
+            <div id="dropDiv" class="centerDiv" style="display:none;">
+                <div>
+                    <h2 id="dropItemName">item dispensing</h2>
+                    <h4 id="dropTime"></h4>
+                </div>
+            </div>
+
+            <!-- cancel screen screen -->
+            <div id="cancelDiv" class="centerDiv" style="display:none;">
+                <div>
+                    <h2 id="cancelTxt">cancelling</h2>
+                    <h4 id="cancelTime"></h4>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <h4 style="float:left;">output</h4><input type="button" style="float:left; padding:5px; margin:5px 5px 15px 25px;" id="clearOutPutBtn" value="clearOutPut" onclick="clearOutPut()" />
+    <textarea id="output"></textarea>
+
+    <div class="statePlaner" id="layoutDiv"></div>
+</body>
+</html>

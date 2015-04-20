@@ -41,7 +41,7 @@
             }
         }
 
-        public init(): void {
+        public init(cssSetting: any): void {
 
             this.useDiv.empty();
             var self: FSMUI = this;
@@ -157,6 +157,9 @@
             this.useDiv.prepend(newSvg);
             this.svg = $(newSvg);
 
+            if (cssSetting) {
+                this.useDiv.css(cssSetting);
+            }
             this.toCurrentState();
 
         }
@@ -171,7 +174,7 @@
             if (cState.isInitial) addVal = " (init)";
             if (cState.isFinal) addVal = " (final)";
 
-            if (cState.hasChild()) {
+            if (cState.childs.length > 0) {
 
                 var loopUL: JQuery = $("<ul data-name='" + cState.name + "'></ul>");
                 parentObj.append(loopUL);

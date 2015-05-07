@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplanner.js"></script>
+    <script src="../src/stateplannerUI.js"></script>
+    <link href="../src/stateplanner.css" rel="stylesheet" />
+    <style type="text/css">
+        body {
+            font: normal 15px arial;
+        }
+        #output {
+            width: 800px;
+            border: 1px solid #999;
+            background: #EEE;
+            border-radius: 5px;
+            height: 300px;
+        }
+    </style>
+
+    <script type="text/javascript">
+        var fsm;
+        function runTest() {
+
+            //create a finite state machine class
+            fsm = new sp.FSM("HelloFSM");
+
+            //create states , stateA and stateB
+            var stateA = fsm.createState("stateA");
+            var stateB = fsm.createState("stateB");
+
+            //add stateA and stateB to the root of the FSM class
+            fsm.addChild([stateA, stateB]);
+
+            //add transition from stateA to stateB
+            stateA.addTransition(stateB);
+
+            //add events when state changes.
+            stateA.enter = function () {
+                log("stateA enter , using stateA.enter function ");
+            }
+            stateA.exit = function () {
+                log("stateA exit , using stateA.exit function ");
+            }
+
+            //add event listener to fsm class , every time when a state enter or exit, the corresponding event fires.
+            fsm.addEvent("stateEnter", function (e) {
+                log("fsm fire stateEnter Event , " + e.values.current.name + " | from: " + e.values.from.name);
+            });
+            fsm.addEvent("stateExit", function (e) {
+                log("fsm fire stateExit Event , " + e.values.current.name + " | next: " + e.values.next.name);
+            });
+
+            //build the tree structure once when any state added or removed.
+            fsm.buildTree();
+
+            //initialize the state machine, set first state to be stateA
+            fsm.init("stateA");
+
+            fsm.toState("stateB");
+
+        }
+
+        var msgs = [];
+        function log(newMsg) {
+            msgs.push(newMsg);
+            $("#output").val(msgs.join("\n"));
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+
+    </script>
+</head>
+
+<body onload="runTest()">
+    <textarea id="output"></textarea>
+</body>
+</html>

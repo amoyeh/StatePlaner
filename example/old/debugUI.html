@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>State Layout</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplanner.js"></script>
+    <script src="../src/stateplannerUI.js"></script>
+    <link rel="stylesheet" href="../src/stateplanner.css" />
+</head>
+<body>
+
+    <div class="statePlaner" id="layoutDiv"></div>
+
+    <script type="text/javascript">
+
+        var fsm = new sp.FSM("LayoutApp");
+
+        var red = new sp.State("red");
+        var green = new sp.State("green");
+        var yellow = new sp.State("yellow");
+
+        var reda = new sp.State("red-a");
+        var redb = new sp.State("red-b");
+        var redc = new sp.State("red-c");
+        red.addChild([reda, redb, redc], true, true);
+        redb.addTransition([reda, redc]);
+
+        var redb1 = new sp.State("red-b-1", true);
+        var redb2 = new sp.State("red-b-2");
+        var redb3 = new sp.State("red-b-3", false, true);
+        redb.addChild([redb1, redb2, redb3], true, true);
+
+        var redb21 = new sp.State("red-b-2-1", true);
+        var redb22 = new sp.State("red-b-2-2");
+        var redb23 = new sp.State("red-b-2-3", false, true);
+        redb2.addChild([redb21, redb22, redb23], true, true);
+
+
+        red.addTransition(green);
+        green.addTransition(yellow);
+        yellow.addTransition(red);
+
+        fsm.addChild([red, green, yellow], true);
+        fsm.buildTree();
+        fsm.init("red-b-2-2");
+        fsm.toState("yellow");
+
+        //create float debug window
+        var debugUI = new sp.FSMUI(fsm, "layoutDiv");
+        debugUI.init();
+
+    </script>
+
+</body>
+</html>

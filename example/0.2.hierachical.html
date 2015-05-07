@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplanner.js"></script>
+    <script src="../src/stateplannerUI.js"></script>
+    <link href="../src/stateplanner.css" rel="stylesheet" />
+    <style type="text/css">
+        body {
+            font: normal 15px arial;
+        }
+
+        #output {
+            width: 800px;
+            border: 1px solid #999;
+            background: #EEE;
+            border-radius: 5px;
+            height: 300px;
+        }
+    </style>
+
+    <script type="text/javascript">
+        var fsm;
+        function runTest() {
+
+            fsm = new sp.FSM("hierachicalFSM");
+
+            //adding childs ---------------------------------------------------------------
+            var stateA = fsm.createState("stateA");
+            var stateA1 = fsm.createState("stateA1");
+            stateA.addChild([stateA1]);
+
+            var stateB = fsm.createState("stateB");
+            var stateB1 = fsm.createState("stateB1");
+            stateB.addChild([stateB1]);
+
+            fsm.addChild([stateA, stateB]);
+
+
+            //adding transitions -----------------------------------------------------------
+            stateA.addTransition(stateA1);
+            stateA1.addTransition(stateB);
+            stateB.addTransition(stateB1);
+
+
+            fsm.addEvent("stateEnter", function (e) {
+                log("stateEnter >> " + e.values.current.name + " | from: " + e.values.from.name);
+            });
+
+            fsm.addEvent("stateExit", function (e) {
+                log("stateExit >> " + e.values.current.name + " | next: " + e.values.next.name);
+            });
+
+            fsm.buildTree();
+
+            fsm.init("stateA");
+            log('');
+
+            log('==  fsm.toState("stateA1") ===================================================');
+            fsm.toState("stateA1");
+            log('');
+
+            log('==  fsm.toState("stateB") ====================================================');
+            fsm.toState("stateB");
+            log('');
+
+            log('==  fsm.toState("stateB1") ===================================================');
+            fsm.toState("stateB1");
+            log('');
+
+        }
+
+        var msgs = [];
+        function log(newMsg) {
+            msgs.push(newMsg);
+            $("#output").val(msgs.join("\n"));
+            document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        }
+
+    </script>
+</head>
+
+<body onload="runTest()">
+    <textarea id="output"></textarea>
+</body>
+</html>

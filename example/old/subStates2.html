@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>State Layout</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script src="../src/stateplaner.js"></script>
+    <link rel="stylesheet" href="../src/stateplaner.css" />
+    <style type="text/css">
+        .stage {
+            font: normal 15px arial;
+        }
+
+        .stateBase {
+            width: 300px;
+            height: 250px;
+            float: left;
+            box-sizing: border-box;
+            border: 1px solid #EEE;
+            margin: 10px 10px 10px 0px;
+            padding: 10px;
+            font-weight: bold;
+        }
+
+            .stateBase:after {
+                content: "";
+                display: table;
+                clear: both;
+            }
+
+        .stateSub {
+            width: 90%;
+            box-sizing: border-box;
+            border: 1px solid #EEE;
+            padding: 10px;
+            margin: 10px;
+        }
+
+        .stage:after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+
+        .btnsDiv {
+            margin: 10px 0px;
+        }
+
+        h4 {
+            margin: 10px 0px;
+            padding: 0px;
+        }
+
+        #output {
+            width: 100%;
+            border: none;
+            background: #EEEEEE;
+            border-radius: 5px;
+            height: 200px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="stage">
+        <div id="stateADiv" class="stateBase">
+            state_A
+            <div id="stageA1Div" class="stateSub">
+                state_A_1
+            </div>
+            <div id="stageA2Div" class="stateSub">
+                state_A_2
+            </div>
+            <div id="stageA2Div" class="stateSub">
+                state_A_3
+            </div>
+        </div>
+        <div id="stateBDiv" class="stateBase">
+            state_B
+            <div id="stageB1Div" class="stateSub">
+                state_B_1
+            </div>
+            <div id="stageB2Div" class="stateSub">
+                state_B_2
+                <div id="stageB21Div" class="stateSub">
+                    state_B_2_1
+                </div>
+                <div id="stageB21Div" class="stateSub">
+                    state_B_2_2
+                </div>
+            </div>
+        </div>
+        <div id="stateCDiv" class="stateBase">
+            state_C
+            <div id="stageC1Div" class="stateSub">
+                state_C_1
+                <div id="stageC11Div" class="stateSub">
+                    state_C_1_1
+                    <div id="stageC111Div" class="stateSub">
+                        state_C_1_1_1
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="btnsDiv">
+        <input type="button" onclick="fsm.toState('state_A')" value="to state_A" />
+        <input type="button" onclick="fsm.toState('state_B')" value="to state_B" />
+        <input type="button" onclick="fsm.toState('state_C')" value=" to state_C" />
+    </div>
+
+    <h4 style="float:left;">output</h4>
+    <input type="button" style="float:left; padding:5px; margin:5px 5px 15px 25px;" id="clearOutPutBtn" value="clearOutPut" />
+    <textarea id="output"></textarea>
+
+    <div class="statePlaner" id="layoutDiv">
+    </div>
+
+    <script type="text/javascript">
+
+        //var fsm;
+
+        //$(document).ready(function () {
+
+        //    fsm = new sp.FSM("basicApp");
+
+        //    var state_A = new sp.State("state_A");
+        //    var state_B = new sp.State("state_B");
+        //    var state_C = new sp.State("state_C");
+
+        //    state_A.addTransition(state_B);
+        //    state_B.addTransition(state_C);
+        //    state_C.addTransition(state_A);
+
+        //    state_A.enter = function (target, fsm, from) {
+        //        log("enter state_A from " + from);
+        //        $("#stateADiv").css({ "background": "#FFAAAA" });
+        //    }
+        //    state_A.exit = function (target, fsm, next) {
+        //        log("exit state_A next " + next);
+        //        $("#stateADiv").css({ "background": "#FFFFFF" });
+        //    }
+
+        //    state_B.enter = function (target, fsm, from) {
+        //        log("enter state_B from " + from);
+        //        $("#stateBDiv").css({ "background": "#FFAAAA" });
+        //    }
+        //    state_B.exit = function (target, fsm, next) {
+        //        log("exit state_B next " + next);
+        //        $("#stateBDiv").css({ "background": "#FFFFFF" });
+        //    }
+
+        //    state_C.enter = function (target, fsm, from) {
+        //        log("enter state_C from " + from);
+        //        $("#stateCDiv").css({ "background": "#FFAAAA" });
+        //    }
+        //    state_C.exit = function (target, fsm, next) {
+        //        log("exit state_C next " + next);
+        //        $("#stateCDiv").css({ "background": "#FFFFFF" });
+        //    }
+
+        //    fsm.addChild([state_A, state_B, state_C]);
+
+
+        //    fsm.addEvent("error", function (evt) {
+        //        log(evt.values.msg);
+        //    });
+
+        //    fsm.buildTree();
+
+        //    fsm.init("state_A");
+
+        //});
+
+
+        ////print log message
+        //var msgs = [];
+        //function log(newMsg) {
+        //    msgs.push(newMsg);
+        //    $("#output").val(msgs.join("\n"));
+        //    while (msgs.length > 20) msgs.shift();
+        //    document.getElementById('output').scrollTop = document.getElementById('output').scrollHeight;
+        //}
+
+
+    </script>
+
+</body>
+</html>
